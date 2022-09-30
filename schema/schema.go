@@ -15,7 +15,7 @@ var SchemaPro = `{
 		{
 			"name":"c_flowid",
 			"type":"string",
-			"default":"rrrrrrrrrrrrro"
+			"default":"rrrrrrrrrrrrrortrtrtrtweoiwoewserwd"
 		},
 		{
 			"name":"c_src_ipv4",
@@ -123,7 +123,7 @@ var SchemaPro = `{
 		{
 			"name":"c_app_type",
 			"type":"string",
-			"default":"iuiuiuiuiuiu"
+			"default":"iuiuiuiuiuiurhrhrhrhrewr425refre"
 		},
 		{
 			"name":"c_stream_time",
@@ -138,47 +138,47 @@ var SchemaPro = `{
 		{
 			"name":"c_s_boundary",
 			"type":"long",
-			"default":54651154
+			"default":5465115487
 		},
 		{
 			"name":"c_s_region",
 			"type":"long",
-			"default":54545454
+			"default":5454545498
 		},
 		{
 			"name":"c_s_city",
 			"type":"long",
-			"default":565
+			"default":56534
 		},
 		{
 			"name":"c_s_district",
 			"type":"long",
-			"default":464
+			"default":4642334
 		},
 		{
 			"name":"c_s_operators",
 			"type":"long",
-			"default":65659
+			"default":6565934
 		},
 		{
 			"name":"c_s_owner",
 			"type":"string",
-			"default":"ssss"
+			"default":"ssssasdsafsafwerewrewrewrw"
 		},
 		{
 			"name":"c_d_boundary",
 			"type":"long",
-			"default":15465
+			"default":1546534
 		},
 		{
 			"name":"c_d_region",
 			"type":"long",
-			"default":454
+			"default":45434
 		},
 		{
 			"name":"c_d_city",
 			"type":"long",
-			"default":4845
+			"default":484534
 		},
 		{
 			"name":"c_d_district",
@@ -193,7 +193,7 @@ var SchemaPro = `{
 		{
 			"name":"c_d_owner",
 			"type":"string",
-			"default":"dsss"
+			"default":"dsssasfdrqrewreerewrewrewrewwe"
 		},
 		{
 			"name":"c_s_mark1",

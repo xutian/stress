@@ -9,7 +9,6 @@ import (
 	"main/schema"
 	"net"
 	"os"
-	"strconv"
 	"sync"
 	"sync/atomic"
 
@@ -21,7 +20,7 @@ import (
 	"gopkg.in/avro.v0"
 )
 
-func sendToKafka(w *kafka.Writer, buf []byte, ops *uint64) {
+func sendToKafka(w *kafka.Writer, buf []byte, ops *uint64, errops *uint64) {
 	msg := kafka.Message{
 		Key:   []byte("1"),
 		Value: buf,
@@ -29,18 +28,12 @@ func sendToKafka(w *kafka.Writer, buf []byte, ops *uint64) {
 	err := w.WriteMessages(context.Background(), msg)
 	fmt.Printf("send kafka: message size:%dB\n", len(buf))
 	if err != nil {
+		atomic.AddUint64(errops, 1)
 		fmt.Println(err)
 	} else {
 		atomic.AddUint64(ops, 1)
 	}
 }
-
-// func getIpv6Date() []byte {
-// 	str := "1111111111111111"
-// 	ipv6 := []byte(str)
-// 	// fmt.Printf("%v", ipv6)
-// 	return ipv6
-// }
 
 func writeToBuffer(record *avro.GenericRecord, avrowriter *avro.GenericDatumWriter, thread int, threadChans []chan []byte) {
 	buffer := new(bytes.Buffer)
@@ -49,7 +42,7 @@ func writeToBuffer(record *avro.GenericRecord, avrowriter *avro.GenericDatumWrit
 	//for len(buffer.Bytes()) <= 1*1000*1000 {
 	for count := 0; count < recordnum; count++ {
 		record.Set("c_netnum", int32(count))
-		record.Set("c_log_time", time.Now().UnixNano()/1e6)
+		record.Set("c_log_time", time.Now().UnixMilli())
 		record.Set("c_src_ipv4", int64(ipdata))
 		record.Set("c_dest_ipv4", int64(ipdata))
 		record.Set("c_ip", int64(ipdata))
@@ -65,7 +58,7 @@ func writeToBuffer(record *avro.GenericRecord, avrowriter *avro.GenericDatumWrit
 			prebuffer = len(buffer.Bytes())
 		}
 	}
-	//fmt.Printf("thread-%d : buffer size:%dB\n", thread, prebuffer)
+	//fmt.Printf("thread-%d : pre buffer size:%dB\n", thread, prebuffer)
 	threadChans[thread] <- buffer.Bytes()
 }
 
@@ -73,8 +66,8 @@ var (
 	sndnum       int
 	threadsnum   int
 	recordnum    int
-	topic        string
-	runtostop    int
+	topic        = "mpp_bus_pro"
+	runtostop    float64
 	flow         bool
 	flowinterval int
 	ipdata       = binary.BigEndian.Uint32(net.ParseIP("98.138.253.109")[12:16])
@@ -84,10 +77,10 @@ var (
 
 func init() {
 	flag.StringVar(&topic, "topic", "mpp_bus_pro", "topic")
-	flag.IntVar(&recordnum, "r", 10, "每条消息行数")
+	flag.IntVar(&recordnum, "r", 1, "每条消息行数")
 	flag.IntVar(&threadsnum, "t", 1, "线程数")
-	flag.IntVar(&sndnum, "n", 20, "总消息数")
-	flag.IntVar(&runtostop, "T", 0, "按时长跑:单位min")
+	flag.IntVar(&sndnum, "n", 1, "总消息数")
+	flag.Float64Var(&runtostop, "T", 0, "按时长跑:单位min")
 	flag.BoolVar(&flow, "flow", false, "是否流量控制,开启后,同时设置令牌间隔时间")
 	flag.IntVar(&flowinterval, "ft", 0, "令牌间隔时间:单位ms")
 }
@@ -121,24 +114,14 @@ func main() {
 		Async: true,
 	})
 
-	var ops uint64 = 0
-
-	runtimeStart := time.Now().UnixMilli()
-	runtimeStop := runtimeStart + int64(runtostop*3600*1000)
 	for t := 0; t < threadsnum; t++ {
 		record := avro.NewGenericRecord(schema)
-		if runtostop > 0 {
-			if sndnum > 0 {
-				fmt.Println("总时长和总发送数量不能同时开启")
-				os.Exit(0)
-			}
-			go func(timeStop int64, thread int) {
-				for time.Now().UnixMilli() <= timeStop {
+		if runtostop > 0 && sndnum == 0 {
+			go func(thread int) {
+				for {
 					writeToBuffer(record, avrowriter, thread, threadChans)
 				}
-				close(threadChans[thread])
-			}(runtimeStop, t)
-
+			}(t)
 		} else if runtostop == 0 && sndnum > 0 {
 			go func(num int, thread int) {
 				for n := 0; n < num; n++ {
@@ -146,6 +129,9 @@ func main() {
 				}
 				close(threadChans[thread])
 			}(unitsnd, t)
+		} else {
+			fmt.Println("总时长和总发送数量不能同时开启")
+			os.Exit(0)
 		}
 
 	}
@@ -168,48 +154,65 @@ func main() {
 		}
 	}(flow)
 
+	var ops uint64 = 0
+	var errops uint64 = 0
 	timeStart := time.Now().UnixMilli()
+	runtimeStop := timeStart + int64(runtostop*60*1000)
 	for t := 0; t < threadsnum; t++ {
 		go func(thread int) {
-			for {
-				buf, ok := <-threadChans[thread]
-				if !ok {
-					waitSignal.Done()
-					break
-				}
-
-				//发送的流量控制
-				if flow {
-					sendtoken := <-tokenChan
-					if sendtoken == 1 {
-						fmt.Printf("---\tthread-%d : read msg from buf %dB\t", thread, len(buf))
-						sendToKafka(w, buf, &ops)
+			if runtostop > 0 && sndnum == 0 {
+				for time.Now().UnixMilli() <= runtimeStop {
+					buf := <-threadChans[thread]
+					//发送的流量控制
+					if flow {
+						sendtoken := <-tokenChan
+						if sendtoken == 1 {
+							fmt.Printf("---\tthread-%d : read msg from buf %dB\t", thread, len(buf))
+							sendToKafka(w, buf, &ops, &errops)
+						} else {
+							fmt.Println("流量控制时长不能为0")
+							os.Exit(0)
+						}
 					} else {
-						fmt.Println("流量控制时长不能为0")
-						os.Exit(0)
+						fmt.Printf("---\tthread-%d : read msg from buf %dB\t", thread, len(buf))
+						sendToKafka(w, buf, &ops, &errops)
 					}
-				} else {
-					fmt.Printf("---\tthread-%d : read msg from buf %dB\t", thread, len(buf))
-					sendToKafka(w, buf, &ops)
+				}
+				waitSignal.Done()
+			} else if runtostop == 0 && sndnum > 0 {
+				for {
+					buf, ok := <-threadChans[thread]
+					if !ok {
+						waitSignal.Done()
+						break
+					}
+					//发送的流量控制
+					if flow {
+						sendtoken := <-tokenChan
+						if sendtoken == 1 {
+							fmt.Printf("---\tthread-%d : read msg from buf %dB\t", thread, len(buf))
+							sendToKafka(w, buf, &ops, &errops)
+						} else {
+							fmt.Println("流量控制时长不能为0")
+							os.Exit(0)
+						}
+					} else {
+						fmt.Printf("---\tthread-%d : read msg from buf %dB\t", thread, len(buf))
+						sendToKafka(w, buf, &ops, &errops)
+					}
 				}
 			}
 		}(t)
-
 	}
 	waitSignal.Wait()
 	w.Close()
 
 	//结果数据打印
-	original := uint64(sndnum * recordnum)
 	timeEnd := time.Now().UnixMilli()
+	original := uint64(sndnum * recordnum)
 	totalSnd := atomic.LoadUint64(&ops) * uint64(recordnum)
-	var errorsnd uint64
-	if sndnum == 0 {
-		errorsnd = 0
-	} else {
-		errorsnd = original - totalSnd
-	}
+	errSnd := atomic.LoadUint64(&errops) * uint64(recordnum)
 	totalByte := totalSnd * uint64(prebuffer) / 1024 / 1024
-	ioRate, _ := strconv.ParseFloat(fmt.Sprintf("%.2f", float64(totalByte)/float64((timeEnd-timeStart)/1000)), 64)
-	fmt.Printf("\n======end======\nOriginal Send:%d\nActual Send:%d\nError Send:%d\nVolume:%dMB\nTime:%dms\nI/O:%.2fM/s", original, totalSnd, errorsnd, totalByte, (timeEnd - timeStart), ioRate)
+	ioRate := float64(totalByte) / (float64(timeEnd-timeStart) / 1000)
+	fmt.Printf("\n======end======\nOriginal Send:%d\nActual Send:%d\nError Send:%d\nVolume:%dMB\nTime:%dms\nI/O:%.2fM/s", original, totalSnd, errSnd, totalByte, (timeEnd - timeStart), ioRate)
 }
