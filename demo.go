@@ -17,6 +17,7 @@ import (
 	"time"
 
 	kafka "github.com/segmentio/kafka-go"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/avro.v0"
 )
 
@@ -26,7 +27,7 @@ func sendToKafka(w *kafka.Writer, buf []byte, ops *uint64, errops *uint64) {
 		Value: buf,
 	}
 	err := w.WriteMessages(context.Background(), msg)
-	fmt.Printf("send kafka: message size:%dB\n", len(buf))
+	log.Infof("send kafka: message size:%dB\n", len(buf))
 	if err != nil {
 		atomic.AddUint64(errops, 1)
 		fmt.Println(err)
@@ -145,7 +146,7 @@ func main() {
 				close(threadChans[thread])
 			}(unitsnd, t)
 		} else {
-			fmt.Println("总时长和总发送数量不能同时开启")
+			log.Infof("总时长和总发送数量不能同时开启")
 			os.Exit(0)
 		}
 
@@ -157,7 +158,7 @@ func main() {
 			if flowinterval > 0 {
 				for {
 					tokenChan <- 1
-					fmt.Printf("\n+++++ token +++++\n")
+					log.Infof("\n+++++ token +++++\n")
 					time.Sleep(time.Duration(flowinterval) * time.Millisecond)
 				}
 
@@ -182,14 +183,14 @@ func main() {
 					if flow {
 						sendtoken := <-tokenChan
 						if sendtoken == 1 {
-							fmt.Printf("---\tthread-%d : read msg from buf %dB\t", thread, len(buf))
+							log.Infof("---\tthread-%d : read msg from buf %dB\t", thread, len(buf))
 							sendToKafka(w, buf, &ops, &errops)
 						} else {
-							fmt.Println("流量控制时长不能为0")
+							log.Info("流量控制时长不能为0")
 							os.Exit(0)
 						}
 					} else {
-						fmt.Printf("---\tthread-%d : read msg from buf %dB\t", thread, len(buf))
+						log.Infof("---\tthread-%d : read msg from buf %dB\t", thread, len(buf))
 						sendToKafka(w, buf, &ops, &errops)
 					}
 				}
@@ -205,14 +206,14 @@ func main() {
 					if flow {
 						sendtoken := <-tokenChan
 						if sendtoken == 1 {
-							fmt.Printf("---\tthread-%d : read msg from buf %dB\t", thread, len(buf))
+							log.Infof("---\tthread-%d : read msg from buf %dB\t", thread, len(buf))
 							sendToKafka(w, buf, &ops, &errops)
 						} else {
-							fmt.Println("流量控制时长不能为0")
+							log.Info("流量控制时长不能为0")
 							os.Exit(0)
 						}
 					} else {
-						fmt.Printf("---\tthread-%d : read msg from buf %dB\t", thread, len(buf))
+						log.Infof("---\tthread-%d : read msg from buf %dB\t", thread, len(buf))
 						sendToKafka(w, buf, &ops, &errops)
 					}
 				}
@@ -229,5 +230,5 @@ func main() {
 	errSnd := atomic.LoadUint64(&errops) * uint64(recordnum)
 	totalByte := totalSnd * uint64(prebuffer) / 1024 / 1024
 	ioRate := float64(totalByte) / (float64(timeEnd-timeStart) / 1000)
-	fmt.Printf("\n======end======\nOriginal Send:%d\nActual Send:%d\nError Send:%d\nVolume:%dMB\nTime:%dms\nI/O:%.2fM/s", original, totalSnd, errSnd, totalByte, (timeEnd - timeStart), ioRate)
+	log.Infof("\n======end======\nOriginal Send:%d\nActual Send:%d\nError Send:%d\nVolume:%dMB\nTime:%dms\nI/O:%.2fM/s", original, totalSnd, errSnd, totalByte, (timeEnd - timeStart), ioRate)
 }
