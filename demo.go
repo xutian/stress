@@ -42,14 +42,20 @@ func writeToBuffer(record *avro.GenericRecord, avrowriter *avro.GenericDatumWrit
 	//for len(buffer.Bytes()) <= 1*1000*1000 {
 	for count := 0; count < recordnum; count++ {
 		record.Set("c_netnum", int32(count))
-		record.Set("c_log_time", time.Now().UnixMilli())
-		record.Set("c_src_ipv4", int64(ipdata))
-		record.Set("c_dest_ipv4", int64(ipdata))
-		record.Set("c_ip", int64(ipdata))
-		record.Set("c_s_tunnel_ip", int64(ipdata))
-		record.Set("c_d_tunnel_ip", int64(ipdata))
-		record.Set("c_src_ipv6", ipv6)
-		record.Set("c_dest_ipv6", ipv6)
+		switch schemaname {
+		case 1:
+			record.Set("c_time", time.Now().Unix())
+		case 2:
+			record.Set("c_log_time", time.Now().UnixMilli())
+			record.Set("c_src_ipv4", int64(ipdata))
+			record.Set("c_dest_ipv4", int64(ipdata))
+			record.Set("c_ip", int64(ipdata))
+			record.Set("c_s_tunnel_ip", int64(ipdata))
+			record.Set("c_d_tunnel_ip", int64(ipdata))
+			record.Set("c_src_ipv6", ipv6)
+			record.Set("c_dest_ipv6", ipv6)
+		}
+
 		err := avrowriter.Write(record, encoder)
 		if err != nil {
 			panic(err)
@@ -66,23 +72,26 @@ var (
 	sndnum       int
 	threadsnum   int
 	recordnum    int
-	topic        = "mpp_bus_pro"
+	topic        string
 	runtostop    float64
 	flow         bool
 	flowinterval int
 	ipdata       = binary.BigEndian.Uint32(net.ParseIP("98.138.253.109")[12:16])
 	ipv6         = []byte("1111111111111111")
 	prebuffer    int
+	//切换schema，用于300B、500B等多schema的切换
+	schemaname int
 )
 
 func init() {
-	flag.StringVar(&topic, "topic", "mpp_bus_pro", "topic")
+	flag.StringVar(&topic, "topic", "", "topic")
 	flag.IntVar(&recordnum, "r", 1, "每条消息行数")
 	flag.IntVar(&threadsnum, "t", 1, "线程数")
 	flag.IntVar(&sndnum, "n", 1, "总消息数")
 	flag.Float64Var(&runtostop, "T", 0, "按时长跑:单位min")
 	flag.BoolVar(&flow, "flow", false, "是否流量控制,开启后,同时设置令牌间隔时间")
 	flag.IntVar(&flowinterval, "ft", 0, "令牌间隔时间:单位ms")
+	flag.IntVar(&schemaname, "s", 2, "选择schema:1--对应0927的schema;2--对应pro的schema")
 }
 
 func main() {
@@ -97,8 +106,14 @@ func main() {
 	//单个线程发送数量
 	var unitsnd int = sndnum / threadsnum
 
-	schema := avro.MustParseSchema(schema.SchemaPro)
-
+	var parseschema string
+	switch schemaname {
+	case 1:
+		parseschema = schema.SchemarRaw
+	case 2:
+		parseschema = schema.SchemaPro
+	}
+	schema := avro.MustParseSchema(parseschema)
 	avrowriter := avro.NewGenericDatumWriter()
 	avrowriter.SetSchema(schema)
 	w := kafka.NewWriter(kafka.WriterConfig{
