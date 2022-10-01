@@ -5,8 +5,10 @@
 必填项：
 - -topic string topic
 - -s int 选择schema:
-         1--对应topic 0927的schema;
+         1--对应topic 0927的schema
          2--对应topic pro的schema
+-
+
 选填项：
 - -n int 总消息数 (default 1)  	
 - -r int 每条消息行数 (default 1) 	
