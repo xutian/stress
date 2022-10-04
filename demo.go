@@ -120,7 +120,7 @@ func main() {
 	avrowriter.SetSchema(schema)
 	w := kafka.NewWriter(kafka.WriterConfig{
 
-		Brokers: []string{"172.16.0.70:9094"},
+		Brokers: []string{"localhost:9094"},
 
 		Topic: topic,
 
