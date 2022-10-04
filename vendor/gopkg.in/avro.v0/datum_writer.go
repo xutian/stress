@@ -529,7 +529,6 @@ func (writer *GenericDatumWriter) writeEnum(v interface{}, enc Encoder, s Schema
 
 func (writer *GenericDatumWriter) writeUnion(v interface{}, enc Encoder, s Schema) error {
 	unionSchema := s.(*UnionSchema)
-
 	index := unionSchema.GetType(reflect.ValueOf(v))
 	if index != -1 {
 		enc.WriteInt(int32(index))
