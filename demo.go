@@ -55,6 +55,7 @@ func writeToBuffer(record *avro.GenericRecord, avrowriter *avro.GenericDatumWrit
 			record.Set("c_d_tunnel_ip", int64(ipdata))
 			record.Set("c_src_ipv6", ipv6)
 			record.Set("c_dest_ipv6", ipv6)
+			record.Set("c_s_tunnel_port", int32(8080))
 		}
 
 		err := avrowriter.Write(record, encoder)
@@ -119,7 +120,7 @@ func main() {
 	avrowriter.SetSchema(schema)
 	w := kafka.NewWriter(kafka.WriterConfig{
 
-		Brokers: []string{"localhost:9094"},
+		Brokers: []string{"172.16.0.70:9094"},
 
 		Topic: topic,
 
