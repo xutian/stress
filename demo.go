@@ -42,9 +42,10 @@ func writeToBuffer(record *avro.GenericRecord, avrowriter *avro.GenericDatumWrit
 	//累计1M发送到channel
 	//for len(buffer.Bytes()) <= 1*1000*1000 {
 	for count := 0; count < recordnum; count++ {
-		record.Set("c_netnum", int32(count))
+
 		switch schemaname {
 		case 1:
+			record.Set("c_netnum", int32(count))
 			record.Set("c_time", time.Now().Unix())
 		case 2:
 			record.Set("c_log_time", time.Now().UnixMilli())
@@ -55,6 +56,8 @@ func writeToBuffer(record *avro.GenericRecord, avrowriter *avro.GenericDatumWrit
 			record.Set("c_d_tunnel_ip", int64(ipdata))
 			record.Set("c_src_ipv6", ipv6)
 			record.Set("c_dest_ipv6", ipv6)
+			record.Set("c_netnum", int32(count))
+			record.Set("c_s_tunnel_port", int32(8080))
 		}
 
 		err := avrowriter.Write(record, encoder)

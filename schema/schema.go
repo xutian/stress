@@ -2,11 +2,11 @@ package schema
 
 var SchemaPro = `{
 	"type":"record",
-    "name":"TestRecord",
+    "name":"fxjc_ybrz_dt",
 	"fields":[
 		{
 			"name":"c_netnum",
-			"type":"int"
+			"type":["int","null"]
 		},
 		{
 			"name":"c_ip",
@@ -36,7 +36,7 @@ var SchemaPro = `{
 		},
 		{
 			"name":"c_s_tunnel_port",
-			"type":"int",
+			"type":["int","null"],
 			"default":8080
 		},
 		{
