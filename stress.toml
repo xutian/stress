@@ -1,0 +1,19 @@
+[required]
+brokerips=["127.0.0.1","127.0.0.2"]
+topic="mpp_bus_pro"
+# 切换schema：1--对应0927的schema;2--对应pro的schema
+schemaname=1
+# 线程数
+threadsnum=10
+# 每条消息行数
+recordnum=3333
+# 总消息数
+sndnum=20
+# 总运行时长：单位min
+runtostop=0
+
+[optional]
+# 是否流量控制,开启后,同时设置令牌间隔时间
+flow=false
+# 令牌间隔时间:单位ms
+flowinterval=0

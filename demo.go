@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"flag"
 	"fmt"
 	"main/schema"
 	"net"
@@ -18,6 +17,7 @@ import (
 
 	kafka "github.com/segmentio/kafka-go"
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 	"gopkg.in/avro.v0"
 )
 
@@ -82,21 +82,32 @@ var (
 	prebuffer    int
 	//切换schema，用于300B、500B等多schema的切换
 	schemaname int
+	brokerips  []string
 )
 
-func init() {
-	flag.StringVar(&topic, "topic", "", "topic")
-	flag.IntVar(&recordnum, "r", 1, "每条消息行数")
-	flag.IntVar(&threadsnum, "t", 1, "线程数")
-	flag.IntVar(&sndnum, "n", 1, "总消息数")
-	flag.Float64Var(&runtostop, "T", 0, "按时长跑:单位min")
-	flag.BoolVar(&flow, "flow", false, "是否流量控制,开启后,同时设置令牌间隔时间")
-	flag.IntVar(&flowinterval, "ft", 0, "令牌间隔时间:单位ms")
-	flag.IntVar(&schemaname, "s", 2, "选择schema:1--对应0927的schema;2--对应pro的schema")
+func initConf() {
+	work, _ := os.Getwd()
+	viper.SetConfigName("config")
+	viper.SetConfigType("toml")
+	viper.AddConfigPath(work + "./")
+	err := viper.ReadInConfig()
+	if err != nil {
+		panic("err")
+	}
+	//根据内容类型，解析出不同类型
+	topic = viper.GetString("required.topic")
+	recordnum = viper.GetInt("required.recordnum")
+	threadsnum = viper.GetInt("required.threadsnum")
+	sndnum = viper.GetInt("required.sndnum")
+	runtostop = viper.GetFloat64("required.runtostop")
+	flow = viper.GetBool("optional.flow")
+	flowinterval = viper.GetInt("optional.flowinterval")
+	schemaname = viper.GetInt("required.schemaname")
+	brokerips = viper.GetStringSlice("required.brokerips")
 }
 
 func main() {
-	flag.Parse()
+	initConf()
 	waitSignal := sync.WaitGroup{}
 	waitSignal.Add(threadsnum)
 	//线程对应channel数
@@ -108,6 +119,10 @@ func main() {
 	var unitsnd int = sndnum / threadsnum
 
 	var parseschema string
+	if topic == "" || schemaname == 0 {
+		log.Infof("缺少必填项：-topic或-s")
+		os.Exit(0)
+	}
 	switch schemaname {
 	case 1:
 		parseschema = schema.SchemarRaw
