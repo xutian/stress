@@ -1,74 +1,72 @@
 步骤：
 1：进入kafka
-2：脚本使用方法 ./sndmsg -h
+2：脚本使用方法 ./sndmsg -c xxx.toml
 
-必填项：
-- -topic string topic
-- -s int 选择schema:
-         1--对应topic 0927的schema
-         2--对应topic pro的schema
--
+配置文件说明：
 
-选填项：
-- -n int 总消息数 (default 1)  	
-- -r int 每条消息行数 (default 1) 	
-- -t int 线程数 (default 1)
-- -T float 按时长跑:单位min
-- -flow 是否流量控制,开启后,同时设置令牌间隔时间   	
-- -ft int 令牌间隔时间:单位ms  	
-
-    	
---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+[required]
+>brokerips=["127.0.0.1:9094","127.0.0.2:9094"]
+>
+>topic="mpp_bus_pro"
+>
+>schemaname=2 # 切换schema：1--对应0927的schema;2--对应pro的schema
+>
+>threadsnum=3 # 线程数
+>
+>recordnum=1 # 每条消息行数
+>
+>sndnum=20 # 总消息数
+>
+>runtostop=0 # 总运行时长：单位min
+>
+[optional]
+>flow=false # 是否流量控制,开启后,同时设置令牌间隔时间
+>
+>flowinterval=0 # 令牌间隔时间:单位ms 	
+---
 以下为（按时间运行长稳测试、按发送数量打数量）*（不进行流量控制、20M/s流量控制）排列组合4种模式的样例及说明
----------------------------------------------------------------------
+---
 开启流量控制
--------------------------------------------
-./sndmsg -topic=mpp_bus_pro -s=2 -r=3333 -n=0 -t=1 -T=0.5 -flow=true -ft=50 
-
- 
->-r=3333：一个record 3333行，300B，大概1兆
-> 
-> -T 0.5运行时长，float类型，单位min，开启时间运行的时候，-n 必须为0
-> 
-> -t=1 线程数
-> 
-> -flow=true 开启流量控制 
-> 
-> -ft令牌50ms生成一个
-> 
-> 最后计算出来可以达到19M/s
-
-
-./sndmsg -topic=mpp_bus_pro -s=2 -r=3333 -n=200 -t=20  -flow=true -ft=50
-
-> -r=3333：一个record 3333行，300B，大概1兆
-> 
-> -n 200个record
-> 
-> -t 20个线程 
-> 
-> -flow=true 开启流量控制 
-> 
-> -ft令牌50ms生成一个
-> 
-> 最后计算出来可以达到19M/s
-
----------------------------------------------------------------------
+---
++ brokerips=["xxx.xxx.xxx.xxx:9094","xxx.xxx.xxx.xxx:9094"]
++ topic="mpp_bus_pro"
++ schemaname=2 
++ threadsnum=1
++ recordnum=3333 # 一个record 3333行，300B，大概1兆
++ sndnum=0
++ runtostop=0.5 # 单位min
++ flow=true 
++ flowinterval=50 # 令牌50ms生成一个
+>最后计算出来可以达到19M/s
+---
++ brokerips=["xxx.xxx.xxx.xxx:9094","xxx.xxx.xxx.xxx:9094"]
++ topic="mpp_bus_pro"
++ schemaname=2 
++ threadsnum=20
++ recordnum=3333 # 一个record 3333行，300B，大概1兆
++ sndnum=200
++ runtostop=0
++ flow=true 
++ flowinterval=50 # 令牌50ms生成一个
+---
 非流量控制
--------------------------------------------
-./sndmsg -topic=mpp_bus_pro -s=2 -r=3333 -n=200 -t=20
-
-> -r=3333：一个record 3333行，300B，大概1兆
-> 
-> -n 200个record
-> 
-> -t  线程数 
-
-
-./sndmsg -topic=mpp_bus_pro -s=2 -r=3333 -n=0 -t=200 -T=0.5 
-
-> -r=3333：一个record 3333行，300B，大概1兆
-> 
-> -T 0.5运行时长，float类型，单位min，开启时间运行的时候，-n 必须为0
-> 
-> -t 线程数
+---
++ brokerips=["xxx.xxx.xxx.xxx:9094","xxx.xxx.xxx.xxx:9094"]
++ topic="mpp_bus_pro"
++ schemaname=2 
++ threadsnum=20
++ recordnum=3333 # 一个record 3333行，300B，大概1兆
++ sndnum=200
++ runtostop=0
++ flow=false
++ flowinterval=0
+---
++ brokerips=["xxx.xxx.xxx.xxx:9094","xxx.xxx.xxx.xxx:9094"]
++ topic="mpp_bus_pro"
++ schemaname=2 
++ threadsnum=200
++ recordnum=3333 # 一个record 3333行，300B，大概1兆
++ sndnum=0
++ runtostop=0.5
++ flow=false
++ flowinterval=0
