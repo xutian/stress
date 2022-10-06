@@ -17,7 +17,7 @@ import (
 
 	kafka "github.com/segmentio/kafka-go"
 	log "github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
+	viper "github.com/spf13/viper"
 	"gopkg.in/avro.v0"
 )
 
@@ -39,8 +39,6 @@ func sendToKafka(w *kafka.Writer, buf []byte, ops *uint64, errops *uint64) {
 func writeToBuffer(record *avro.GenericRecord, avrowriter *avro.GenericDatumWriter, thread int, threadChans []chan []byte) {
 	buffer := new(bytes.Buffer)
 	encoder := avro.NewBinaryEncoder(buffer)
-	//累计1M发送到channel
-	//for len(buffer.Bytes()) <= 1*1000*1000 {
 	for count := 0; count < recordnum; count++ {
 
 		switch schemaname {
@@ -83,21 +81,33 @@ var (
 	ipdata       = binary.BigEndian.Uint32(net.ParseIP("98.138.253.109")[12:16])
 	ipv6         = []byte("1111111111111111")
 	prebuffer    int
-	//切换schema，用于300B、500B等多schema的切换
-	schemaname int
-	brokerips  []string
+	schemaname   int
+	brokerips    []string
 )
 
 func initConf() {
-	work, _ := os.Getwd()
-	viper.SetConfigName("config")
-	viper.SetConfigType("toml")
-	viper.AddConfigPath(work + "./")
+	//调试用
+	// work, _ := os.Getwd()
+	// viper.SetConfigName("stress")
+	// viper.SetConfigType("toml")
+	// viper.AddConfigPath(work)
+
+	if len(os.Args) >= 3 {
+		if os.Args[1] == "-c" {
+			cfgFile := os.Args[2]
+			viper.SetConfigFile(cfgFile)
+		}
+	} else {
+		log.Infof("请选择配置文件：-c xxxx.toml")
+		os.Exit(0)
+	}
+
 	err := viper.ReadInConfig()
 	if err != nil {
+		fmt.Println(err)
 		panic("err")
 	}
-	//根据内容类型，解析出不同类型
+
 	topic = viper.GetString("required.topic")
 	recordnum = viper.GetInt("required.recordnum")
 	threadsnum = viper.GetInt("required.threadsnum")
@@ -107,10 +117,34 @@ func initConf() {
 	flowinterval = viper.GetInt("optional.flowinterval")
 	schemaname = viper.GetInt("required.schemaname")
 	brokerips = viper.GetStringSlice("required.brokerips")
+	// brokerips := make([]string, len(viper.GetStringSlice("required.brokerips")))
+	// for index, v := range viper.GetStringSlice("required.brokerips") {
+	// 	brokerips[index] = v + ":9094"
+	// }
+	if topic == "" || schemaname <= 0 {
+		log.Infof("缺少必填项：topic or schema,请修改config")
+		os.Exit(0)
+	}
+	if runtostop > 0 && sndnum > 0 {
+		log.Infof("总时长和总发送数量sndnum不能同时大于0,请修改config")
+		os.Exit(0)
+	}
+	if flow && flowinterval <= 0 {
+		log.Info("流量控制时长flowinterval必须大于0,请修改config")
+		os.Exit(0)
+	}
+	if threadsnum > sndnum {
+		threadsnum = sndnum
+	}
+	if sndnum%threadsnum != 0 {
+		log.Info("本版本仅支持sndnum是threadsnum的倍数,请修改config")
+		os.Exit(0)
+	}
 }
 
 func main() {
 	initConf()
+
 	waitSignal := sync.WaitGroup{}
 	waitSignal.Add(threadsnum)
 	//线程对应channel数
@@ -122,10 +156,6 @@ func main() {
 	var unitsnd int = sndnum / threadsnum
 
 	var parseschema string
-	if topic == "" || schemaname == 0 {
-		log.Infof("缺少必填项：-topic或-s")
-		os.Exit(0)
-	}
 	switch schemaname {
 	case 1:
 		parseschema = schema.SchemarRaw
@@ -137,7 +167,7 @@ func main() {
 	avrowriter.SetSchema(schema)
 	w := kafka.NewWriter(kafka.WriterConfig{
 
-		Brokers: []string{"localhost:9094"},
+		Brokers: brokerips,
 
 		Topic: topic,
 
@@ -163,25 +193,16 @@ func main() {
 				}
 				close(threadChans[thread])
 			}(unitsnd, t)
-		} else {
-			log.Infof("总时长和总发送数量不能同时开启")
-			os.Exit(0)
 		}
-
 	}
 
 	tokenChan := make(chan int, 1)
 	go func(flow bool) {
 		if flow {
-			if flowinterval > 0 {
-				for {
-					tokenChan <- 1
-					log.Infof("\n+++++ token +++++\n")
-					time.Sleep(time.Duration(flowinterval) * time.Millisecond)
-				}
-
-			} else {
-				tokenChan <- 0
+			for {
+				tokenChan <- 1
+				log.Infof("\n+++++ token +++++\n")
+				time.Sleep(time.Duration(flowinterval) * time.Millisecond)
 			}
 		} else {
 			tokenChan <- 0
@@ -203,9 +224,6 @@ func main() {
 						if sendtoken == 1 {
 							log.Infof("---\tthread-%d : read msg from buf %dB\t", thread, len(buf))
 							sendToKafka(w, buf, &ops, &errops)
-						} else {
-							log.Info("流量控制时长不能为0")
-							os.Exit(0)
 						}
 					} else {
 						log.Infof("---\tthread-%d : read msg from buf %dB\t", thread, len(buf))
@@ -226,9 +244,6 @@ func main() {
 						if sendtoken == 1 {
 							log.Infof("---\tthread-%d : read msg from buf %dB\t", thread, len(buf))
 							sendToKafka(w, buf, &ops, &errops)
-						} else {
-							log.Info("流量控制时长不能为0")
-							os.Exit(0)
 						}
 					} else {
 						log.Infof("---\tthread-%d : read msg from buf %dB\t", thread, len(buf))
