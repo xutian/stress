@@ -1,8 +1,9 @@
 [required]
+eip="10.253.31.238"
 brokerips=["127.0.0.1:9094","127.0.0.2:9094"]
-topic="mpp_bus_pro"
 schemaname=2 # 切换schema：1--对应0927的schema;2--对应pro的schema
-threadsnum=3 # 线程数
+topic="mpp_bus_pro"
+threadsnum=1 # 线程数
 recordnum=1 # 每条消息行数
 sndnum=20 # 总消息数
 runtostop=0 # 总运行时长：单位min
@@ -10,3 +11,6 @@ runtostop=0 # 总运行时长：单位min
 [optional]
 flow=false # 是否流量控制,开启后,同时设置令牌间隔时间
 flowinterval=0 # 令牌间隔时间:单位ms
+
+[test]
+usemethod=1 # 默认为1,通过dataproxy发送数据;2为通过kafka发送数据 

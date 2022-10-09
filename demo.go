@@ -5,8 +5,10 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"io/ioutil"
 	"main/schema"
 	"net"
+	"net/http"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -21,19 +23,47 @@ import (
 	"gopkg.in/avro.v0"
 )
 
-func sendToKafka(w *kafka.Writer, buf []byte, ops *uint64, errops *uint64) {
-	msg := kafka.Message{
-		Key:   []byte("1"),
-		Value: buf,
-	}
-	err := w.WriteMessages(context.Background(), msg)
-	log.Infof("send kafka: message size:%dB\n", len(buf))
-	if err != nil {
-		atomic.AddUint64(errops, 1)
-		fmt.Println(err)
+func send(usemethod int, w *kafka.Writer, buf []byte, ops *uint64, errops *uint64, client *http.Client) {
+	if usemethod == 1 {
+		url := "http://" + eip + "/dataload?topic=" + topic
+		req, err := http.NewRequest("POST", url, bytes.NewReader(buf))
+		if err != nil {
+			panic(err)
+		}
+		req.Header.Add("Context-Type", "avro")
+		req.Header.Add("Connection", "keep-alive")
+		req.Header.Add("User", "a")
+		req.Header.Add("Password", "b")
+		req.Header.Add("Content-Type", "application/avro")
+		req.Header.Add("Transfer-Encoding", "chunked")
+		resp, err := client.Do(req)
+		defer req.Body.Close()
+		resbody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			panic(err)
+		}
+		if resp.StatusCode != 200 {
+			atomic.AddUint64(errops, 1)
+			log.Info(string(resbody))
+		} else {
+			atomic.AddUint64(ops, 1)
+			log.Info(string(resbody))
+		}
 	} else {
-		atomic.AddUint64(ops, 1)
+		msg := kafka.Message{
+			Key:   []byte("1"),
+			Value: buf,
+		}
+		err := w.WriteMessages(context.Background(), msg)
+		log.Infof("send kafka: message size:%dB\n", len(buf))
+		if err != nil {
+			atomic.AddUint64(errops, 1)
+			log.Error(err)
+		} else {
+			atomic.AddUint64(ops, 1)
+		}
 	}
+
 }
 
 func writeToBuffer(record *avro.GenericRecord, avrowriter *avro.GenericDatumWriter, thread int, threadChans []chan []byte) {
@@ -83,24 +113,26 @@ var (
 	prebuffer    int
 	schemaname   int
 	brokerips    []string
+	usemethod    int
+	eip          string
 )
 
 func initConf() {
 	//调试用
-	// work, _ := os.Getwd()
-	// viper.SetConfigName("stress")
-	// viper.SetConfigType("toml")
-	// viper.AddConfigPath(work)
+	work, _ := os.Getwd()
+	viper.SetConfigName("stress")
+	viper.SetConfigType("toml")
+	viper.AddConfigPath(work)
 
-	if len(os.Args) >= 3 {
-		if os.Args[1] == "-c" {
-			cfgFile := os.Args[2]
-			viper.SetConfigFile(cfgFile)
-		}
-	} else {
-		log.Infof("请选择配置文件：-c xxxx.toml")
-		os.Exit(0)
-	}
+	// if len(os.Args) >= 3 {
+	// 	if os.Args[1] == "-c" {
+	// 		cfgFile := os.Args[2]
+	// 		viper.SetConfigFile(cfgFile)
+	// 	}
+	// } else {
+	// 	log.Info("请选择配置文件：-c xxxx.toml")
+	// 	os.Exit(0)
+	// }
 
 	err := viper.ReadInConfig()
 	if err != nil {
@@ -117,28 +149,32 @@ func initConf() {
 	flowinterval = viper.GetInt("optional.flowinterval")
 	schemaname = viper.GetInt("required.schemaname")
 	brokerips = viper.GetStringSlice("required.brokerips")
+	usemethod = viper.GetInt("test.usemethod")
+	eip = viper.GetString("required.eip")
 	// brokerips := make([]string, len(viper.GetStringSlice("required.brokerips")))
 	// for index, v := range viper.GetStringSlice("required.brokerips") {
 	// 	brokerips[index] = v + ":9094"
 	// }
 	if topic == "" || schemaname <= 0 {
-		log.Infof("缺少必填项：topic or schema,请修改config")
+		log.Info("缺少必填项：topic or schema,请修改config")
 		os.Exit(0)
 	}
 	if runtostop > 0 && sndnum > 0 {
-		log.Infof("总时长和总发送数量sndnum不能同时大于0,请修改config")
+		log.Info("总时长和总发送数量sndnum不能同时大于0,请修改config")
 		os.Exit(0)
 	}
 	if flow && flowinterval <= 0 {
 		log.Info("流量控制时长flowinterval必须大于0,请修改config")
 		os.Exit(0)
 	}
-	if threadsnum > sndnum {
-		threadsnum = sndnum
-	}
-	if sndnum%threadsnum != 0 {
-		log.Info("本版本仅支持sndnum是threadsnum的倍数,请修改config")
-		os.Exit(0)
+	if sndnum > 0 {
+		if threadsnum > sndnum {
+			threadsnum = sndnum
+		}
+		if sndnum%threadsnum != 0 {
+			log.Info("本版本仅支持sndnum是threadsnum的倍数,请修改config")
+			os.Exit(0)
+		}
 	}
 }
 
@@ -152,8 +188,6 @@ func main() {
 	for n := 0; n < threadsnum; n++ {
 		threadChans[n] = make(chan []byte, 512)
 	}
-	//单个线程发送数量
-	var unitsnd int = sndnum / threadsnum
 
 	var parseschema string
 	switch schemaname {
@@ -178,6 +212,16 @@ func main() {
 		Async: true,
 	})
 
+	// client := &http.Client{}
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+	//单个线程发送数量
+	var unitsnd int
+	if sndnum > 0 {
+		unitsnd = sndnum / threadsnum
+	}
+
 	for t := 0; t < threadsnum; t++ {
 		record := avro.NewGenericRecord(schema)
 		if runtostop > 0 && sndnum == 0 {
@@ -187,6 +231,7 @@ func main() {
 				}
 			}(t)
 		} else if runtostop == 0 && sndnum > 0 {
+
 			go func(num int, thread int) {
 				for n := 0; n < num; n++ {
 					writeToBuffer(record, avrowriter, thread, threadChans)
@@ -201,7 +246,7 @@ func main() {
 		if flow {
 			for {
 				tokenChan <- 1
-				log.Infof("\n+++++ token +++++\n")
+				log.Infof("+++++ token +++++\n")
 				time.Sleep(time.Duration(flowinterval) * time.Millisecond)
 			}
 		} else {
@@ -223,11 +268,11 @@ func main() {
 						sendtoken := <-tokenChan
 						if sendtoken == 1 {
 							log.Infof("---\tthread-%d : read msg from buf %dB\t", thread, len(buf))
-							sendToKafka(w, buf, &ops, &errops)
+							send(usemethod, w, buf, &ops, &errops, client)
 						}
 					} else {
 						log.Infof("---\tthread-%d : read msg from buf %dB\t", thread, len(buf))
-						sendToKafka(w, buf, &ops, &errops)
+						send(usemethod, w, buf, &ops, &errops, client)
 					}
 				}
 				waitSignal.Done()
@@ -243,11 +288,11 @@ func main() {
 						sendtoken := <-tokenChan
 						if sendtoken == 1 {
 							log.Infof("---\tthread-%d : read msg from buf %dB\t", thread, len(buf))
-							sendToKafka(w, buf, &ops, &errops)
+							send(usemethod, w, buf, &ops, &errops, client)
 						}
 					} else {
 						log.Infof("---\tthread-%d : read msg from buf %dB\t", thread, len(buf))
-						sendToKafka(w, buf, &ops, &errops)
+						send(usemethod, w, buf, &ops, &errops, client)
 					}
 				}
 			}
