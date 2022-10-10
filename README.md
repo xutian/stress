@@ -5,11 +5,13 @@
 配置文件说明：
 
 [required]
->brokerips=["127.0.0.1:9094","127.0.0.2:9094"]
+>eip="10.253.31.238" #对应通过dataproxy发送数据
+>
+>brokerips=["127.0.0.1:9094","127.0.0.2:9094"] #对应通过kafka发送数据
 >
 >topic="mpp_bus_pro"
 >
->schemaname=2 # 切换schema：1--对应0927的schema;2--对应pro的schema
+>schemaname=2 # 切换schema：1--对应旧的schema;2--对应新的schema
 >
 >threadsnum=3 # 线程数
 >
@@ -22,7 +24,10 @@
 [optional]
 >flow=false # 是否流量控制,开启后,同时设置令牌间隔时间
 >
->flowinterval=0 # 令牌间隔时间:单位ms 	
+>flowinterval=0 # 令牌间隔时间:单位ms 
+>
+[test]
+>usemethod=1 # 默认为1,通过dataproxy发送数据;2为通过kafka发送数据 	
 ---
 以下为（按时间运行长稳测试、按发送数量打数量）*（不进行流量控制、20M/s流量控制）排列组合4种模式的样例及说明
 ---
