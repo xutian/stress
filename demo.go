@@ -119,20 +119,20 @@ var (
 
 func initConf() {
 	//调试用
-	work, _ := os.Getwd()
-	viper.SetConfigName("stress")
-	viper.SetConfigType("toml")
-	viper.AddConfigPath(work)
+	// work, _ := os.Getwd()
+	// viper.SetConfigName("stress")
+	// viper.SetConfigType("toml")
+	// viper.AddConfigPath(work)
 
-	// if len(os.Args) >= 3 {
-	// 	if os.Args[1] == "-c" {
-	// 		cfgFile := os.Args[2]
-	// 		viper.SetConfigFile(cfgFile)
-	// 	}
-	// } else {
-	// 	log.Info("请选择配置文件：-c xxxx.toml")
-	// 	os.Exit(0)
-	// }
+	if len(os.Args) >= 3 {
+		if os.Args[1] == "-c" {
+			cfgFile := os.Args[2]
+			viper.SetConfigFile(cfgFile)
+		}
+	} else {
+		log.Infof("请选择配置文件：-c xxxx.toml")
+		os.Exit(0)
+	}
 
 	err := viper.ReadInConfig()
 	if err != nil {
@@ -246,7 +246,7 @@ func main() {
 		if flow {
 			for {
 				tokenChan <- 1
-				log.Infof("+++++ token +++++\n")
+				log.Info("+++++ token +++++\n")
 				time.Sleep(time.Duration(flowinterval) * time.Millisecond)
 			}
 		} else {
