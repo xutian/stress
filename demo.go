@@ -37,10 +37,15 @@ func send(usemethod int, w *kafka.Writer, buf []byte, ops *uint64, errops *uint6
 		req.Header.Add("Content-Type", "application/avro")
 		req.Header.Add("Transfer-Encoding", "chunked")
 		resp, err := client.Do(req)
+		if err != nil {
+			log.Errorf("send err:%v", err)
+			return
+		}
 		defer req.Body.Close()
 		resbody, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			panic(err)
+			log.Errorf("read resp err:%v", err)
+			return
 		}
 		if resp.StatusCode != 200 {
 			atomic.AddUint64(errops, 1)
