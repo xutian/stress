@@ -6,7 +6,7 @@ var SchemaPro = `{
 	"fields":[
 		{
 			"name":"c_netnum",
-			"type":["int","null"]
+			"type":["null","int"]
 		},
 		{
 			"name":"c_ip",
@@ -36,7 +36,7 @@ var SchemaPro = `{
 		},
 		{
 			"name":"c_s_tunnel_port",
-			"type":["int","null"],
+			"type":["null","int"],
 			"default":8080
 		},
 		{
