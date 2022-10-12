@@ -2,7 +2,7 @@ package schema
 
 var SchemaPro = `{
 	"type":"record",
-    "name":"fxjc_ybrz_dt",
+    "name":"mpp_bus_pro",
 	"fields":[
 		{
 			"name":"c_netnum",
