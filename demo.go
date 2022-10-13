@@ -191,7 +191,7 @@ func main() {
 	//线程对应channel数
 	threadChans := make([]chan []byte, threadsnum)
 	for n := 0; n < threadsnum; n++ {
-		threadChans[n] = make(chan []byte, 512)
+		threadChans[n] = make(chan []byte, 8)
 	}
 
 	var parseschema string
