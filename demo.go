@@ -219,7 +219,7 @@ func main() {
 
 	// client := &http.Client{}
 	client := &http.Client{
-		Timeout: 10 * time.Second,
+		//Timeout: 10 * time.Second,
 	}
 	//单个线程发送数量
 	var unitsnd int
