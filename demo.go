@@ -17,16 +17,19 @@ import (
 
 	"time"
 
+	_ "net/http/pprof"
+
 	kafka "github.com/segmentio/kafka-go"
 	log "github.com/sirupsen/logrus"
 	viper "github.com/spf13/viper"
 	"gopkg.in/avro.v0"
 )
 
-func send(usemethod int, w *kafka.Writer, buf []byte, ops *uint64, errops *uint64, client *http.Client) {
+func send(usemethod int, w *kafka.Writer, buf *[]byte, ops *uint64, errops *uint64, client *http.Client) {
 	if usemethod == 1 {
 		url := "http://" + eip + "/dataload?topic=" + topic
-		req, err := http.NewRequest("POST", url, bytes.NewReader(buf))
+		reader := bytes.NewReader(*buf)
+		req, err := http.NewRequest("POST", url, reader)
 		if err != nil {
 			panic(err)
 		}
@@ -60,10 +63,10 @@ func send(usemethod int, w *kafka.Writer, buf []byte, ops *uint64, errops *uint6
 	} else {
 		msg := kafka.Message{
 			Key:   []byte("1"),
-			Value: buf,
+			Value: *buf,
 		}
 		err := w.WriteMessages(context.Background(), msg)
-		log.Infof("send kafka: message size:%dB\n", len(buf))
+		log.Infof("send kafka: message size:%dB\n", len(*buf))
 		if err != nil {
 			atomic.AddUint64(errops, 1)
 			log.Error(err)
@@ -74,7 +77,7 @@ func send(usemethod int, w *kafka.Writer, buf []byte, ops *uint64, errops *uint6
 
 }
 
-func writeToBuffer(record *avro.GenericRecord, avrowriter *avro.GenericDatumWriter, thread int, threadChans []chan []byte) {
+func writeToBuffer(record *avro.GenericRecord, avrowriter *avro.GenericDatumWriter, thread int, threadChans []chan *[]byte) {
 	buffer := new(bytes.Buffer)
 	encoder := avro.NewBinaryEncoder(buffer)
 	for count := 0; count < recordnum; count++ {
@@ -105,7 +108,8 @@ func writeToBuffer(record *avro.GenericRecord, avrowriter *avro.GenericDatumWrit
 		}
 	}
 	//fmt.Printf("thread-%d : pre buffer size:%dB\n", thread, prebuffer)
-	threadChans[thread] <- buffer.Bytes()
+	data := buffer.Bytes()
+	threadChans[thread] <- &data
 }
 
 var (
@@ -187,14 +191,18 @@ func initConf() {
 }
 
 func main() {
+	go func() {
+		http.ListenAndServe("0.0.0.0:8899", nil)
+	}()
+
 	initConf()
 
 	waitSignal := sync.WaitGroup{}
 	waitSignal.Add(threadsnum)
 	//线程对应channel数
-	threadChans := make([]chan []byte, threadsnum)
+	threadChans := make([]chan *[]byte, threadsnum)
 	for n := 0; n < threadsnum; n++ {
-		threadChans[n] = make(chan []byte, 8)
+		threadChans[n] = make(chan *[]byte, 8)
 	}
 
 	var parseschema string
@@ -275,11 +283,11 @@ func main() {
 					if flow {
 						sendtoken := <-tokenChan
 						if sendtoken == 1 {
-							log.Infof("---\tthread-%d : read msg from buf %dB\t", thread, len(buf))
+							log.Infof("---\tthread-%d : read msg from buf %dB\t", thread, len(*buf))
 							send(usemethod, w, buf, &ops, &errops, client)
 						}
 					} else {
-						log.Infof("---\tthread-%d : read msg from buf %dB\t", thread, len(buf))
+						log.Infof("---\tthread-%d : read msg from buf %dB\t", thread, len(*buf))
 						send(usemethod, w, buf, &ops, &errops, client)
 					}
 				}
@@ -295,11 +303,11 @@ func main() {
 					if flow {
 						sendtoken := <-tokenChan
 						if sendtoken == 1 {
-							log.Infof("---\tthread-%d : read msg from buf %dB\t", thread, len(buf))
+							log.Infof("---\tthread-%d : read msg from buf %dB\t", thread, len(*buf))
 							send(usemethod, w, buf, &ops, &errops, client)
 						}
 					} else {
-						log.Infof("---\tthread-%d : read msg from buf %dB\t", thread, len(buf))
+						log.Infof("---\tthread-%d : read msg from buf %dB\t", thread, len(*buf))
 						send(usemethod, w, buf, &ops, &errops, client)
 					}
 				}
