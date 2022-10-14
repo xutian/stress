@@ -275,8 +275,8 @@ func main() {
 
 	var ops uint64 = 0
 	var errops uint64 = 0
-	timeStart := time.Now().UnixMilli()
-	runtimeStop := timeStart + int64(runtostop*60*1000)
+	timeStart := time.Now()
+	runtimeStop := timeStart.UnixMilli() + int64(runtostop*60*1000)
 	for t := 0; t < threadsnum; t++ {
 		go func(thread int) {
 			if runtostop > 0 && sndnum == 0 {
@@ -321,11 +321,12 @@ func main() {
 	w.Close()
 
 	//结果数据打印
-	timeEnd := time.Now().UnixMilli()
+	timeEnd := time.Now()
 	original := uint64(sndnum * recordnum)
 	totalSnd := atomic.LoadUint64(&ops) * uint64(recordnum)
 	errSnd := atomic.LoadUint64(&errops) * uint64(recordnum)
 	totalByte := totalSnd * uint64(prebuffer) / 1024 / 1024
-	ioRate := float64(totalByte) / (float64(timeEnd-timeStart) / 1000)
-	log.Infof("\n======end======\nOriginal Send:%d\nActual Send:%d\nError Send:%d\nVolume:%dMB\nTime:%dms\nI/O:%.2fM/s", original, totalSnd, errSnd, totalByte, (timeEnd - timeStart), ioRate)
+	ioRate := float64(totalByte) / (float64(timeEnd.UnixMilli()-timeStart.UnixMilli()) / 1000)
+	log.Infof("\n======end======\nOriginal Send:%d\nActual Send:%d\nError Send:%d\nVolume:%dMB\nTime:%dms\nI/O:%.2fM/s", original, totalSnd, errSnd, totalByte, (timeEnd.UnixMilli() - timeStart.UnixMilli()), ioRate)
+	log.Infof("start time:%v,finished time:%v", timeStart, timeEnd)
 }
