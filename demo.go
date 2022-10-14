@@ -41,6 +41,7 @@ func send(usemethod int, w *kafka.Writer, buf []byte, ops *uint64, errops *uint6
 			log.Errorf("send err:%v", err)
 			return
 		}
+
 		defer req.Body.Close()
 		resbody, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
@@ -54,6 +55,8 @@ func send(usemethod int, w *kafka.Writer, buf []byte, ops *uint64, errops *uint6
 			atomic.AddUint64(ops, 1)
 			log.Info(string(resbody))
 		}
+		resp.Body.Close()
+		client.CloseIdleConnections()
 	} else {
 		msg := kafka.Message{
 			Key:   []byte("1"),
