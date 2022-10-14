@@ -77,11 +77,9 @@ func send(usemethod int, w *kafka.Writer, buf *[]byte, ops *uint64, errops *uint
 
 }
 
-func writeToBuffer(record *avro.GenericRecord, avrowriter *avro.GenericDatumWriter, thread int, threadChans []chan *[]byte) {
-	buffer := new(bytes.Buffer)
+func writeToBuffer(record *avro.GenericRecord, buffer *bytes.Buffer, avrowriter *avro.GenericDatumWriter, thread int, threadChans []chan *[]byte) {
 	encoder := avro.NewBinaryEncoder(buffer)
 	for count := 0; count < recordnum; count++ {
-
 		switch schemaname {
 		case 1:
 			record.Set("c_netnum", int32(count))
@@ -109,6 +107,7 @@ func writeToBuffer(record *avro.GenericRecord, avrowriter *avro.GenericDatumWrit
 	}
 	//fmt.Printf("thread-%d : pre buffer size:%dB\n", thread, prebuffer)
 	data := buffer.Bytes()
+	buffer.Reset()
 	threadChans[thread] <- &data
 }
 
@@ -242,15 +241,19 @@ func main() {
 		record := avro.NewGenericRecord(schema)
 		if runtostop > 0 && sndnum == 0 {
 			go func(thread int) {
+				buffer := new(bytes.Buffer)
 				for {
-					writeToBuffer(record, avrowriter, thread, threadChans)
+					curavrowriter := avro.NewGenericDatumWriter()
+					curavrowriter.SetSchema(schema)
+					currecord := avro.NewGenericRecord(schema)
+					writeToBuffer(currecord, buffer, curavrowriter, thread, threadChans)
 				}
 			}(t)
 		} else if runtostop == 0 && sndnum > 0 {
-
 			go func(num int, thread int) {
+				buffer := new(bytes.Buffer)
 				for n := 0; n < num; n++ {
-					writeToBuffer(record, avrowriter, thread, threadChans)
+					writeToBuffer(record, buffer, avrowriter, thread, threadChans)
 				}
 				close(threadChans[thread])
 			}(unitsnd, t)
