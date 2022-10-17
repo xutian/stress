@@ -1,7 +1,7 @@
 [required]
 eip="10.253.31.238"
 brokerips=["127.0.0.1:9094","127.0.0.2:9094"]
-schemaname=2 # 切换schema：1--对应0927的schema;2--对应pro的schema
+schemaname=2 # 切换schema：1--300B无随机数;2--300B带随机数
 topic="mpp_bus_pro"
 threadsnum=1 # 线程数
 recordnum=1 # 每条消息行数
