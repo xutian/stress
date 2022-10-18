@@ -2,7 +2,7 @@
 eip="10.253.31.238"
 brokerips=["127.0.0.1:9094","127.0.0.2:9094"]
 schemaname=2 # 切换schema：1--300B无随机数;2--300B带随机数
-topic="mpp_bus_pro"
+topics=["mpp_topic1","mpp_topic2"]
 threadsnum=1 # 线程数
 recordnum=1 # 每条消息行数
 sndnum=20 # 总消息数

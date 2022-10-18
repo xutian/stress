@@ -28,7 +28,7 @@ import (
 	"gopkg.in/avro.v0"
 )
 
-func send(usemethod int, w *kafka.Writer, buf *[]byte, ops *uint64, errops *uint64, client *http.Client) {
+func send(usemethod int, w *kafka.Writer, buf *[]byte, ops *uint64, errops *uint64, client *http.Client, topic string) {
 	if usemethod == 1 {
 		url := "http://" + eip + "/dataload?topic=" + topic
 		reader := bytes.NewReader(*buf)
@@ -200,7 +200,7 @@ var (
 	sndnum       int
 	threadsnum   int
 	recordnum    int
-	topic        string
+	topics       []string
 	runtostop    float64
 	flow         bool
 	flowinterval int
@@ -239,7 +239,7 @@ func initConf() {
 		panic("err")
 	}
 
-	topic = viper.GetString("required.topic")
+	topics = viper.GetStringSlice("required.topics")
 	recordnum = viper.GetInt("required.recordnum")
 	threadsnum = viper.GetInt("required.threadsnum")
 	sndnum = viper.GetInt("required.sndnum")
@@ -254,7 +254,7 @@ func initConf() {
 	// for index, v := range viper.GetStringSlice("required.brokerips") {
 	// 	brokerips[index] = v + ":9094"
 	// }
-	if topic == "" || schemaname <= 0 {
+	if len(topics) == 0 || schemaname <= 0 {
 		log.Info("缺少必填项：topic or schema,请修改config")
 		os.Exit(0)
 	}
@@ -306,7 +306,7 @@ func main() {
 
 		Brokers: brokerips,
 
-		Topic: topic,
+		Topic: "",
 
 		Balancer: &kafka.RoundRobin{},
 
@@ -375,11 +375,17 @@ func main() {
 						sendtoken := <-tokenChan
 						if sendtoken == 1 {
 							log.Infof("---\tthread-%d : read msg from buf %dB\t", thread, len(*buf))
-							send(usemethod, w, buf, &ops, &errops, client)
+							for _, v := range topics {
+								w.Topic = v
+								send(usemethod, w, buf, &ops, &errops, client, v)
+							}
 						}
 					} else {
 						log.Infof("---\tthread-%d : read msg from buf %dB\t", thread, len(*buf))
-						send(usemethod, w, buf, &ops, &errops, client)
+						for _, v := range topics {
+							w.Topic = v
+							send(usemethod, w, buf, &ops, &errops, client, v)
+						}
 					}
 				}
 				waitSignal.Done()
@@ -395,11 +401,18 @@ func main() {
 						sendtoken := <-tokenChan
 						if sendtoken == 1 {
 							log.Infof("---\tthread-%d : read msg from buf %dB\t", thread, len(*buf))
-							send(usemethod, w, buf, &ops, &errops, client)
+							for _, v := range topics {
+								w.Topic = v
+								send(usemethod, w, buf, &ops, &errops, client, v)
+							}
+
 						}
 					} else {
 						log.Infof("---\tthread-%d : read msg from buf %dB\t", thread, len(*buf))
-						send(usemethod, w, buf, &ops, &errops, client)
+						for _, v := range topics {
+							w.Topic = v
+							send(usemethod, w, buf, &ops, &errops, client, v)
+						}
 					}
 				}
 			}
