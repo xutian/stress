@@ -423,7 +423,7 @@ func main() {
 
 	//结果数据打印
 	timeEnd := time.Now()
-	original := uint64(sndnum * recordnum)
+	original := uint64(sndnum * recordnum * len(topics))
 	totalSnd := atomic.LoadUint64(&ops) * uint64(recordnum)
 	errSnd := atomic.LoadUint64(&errops) * uint64(recordnum)
 	totalByte := totalSnd * uint64(prebuffer) / 1024 / 1024
