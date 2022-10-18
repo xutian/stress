@@ -3,18 +3,21 @@ package main
 import (
 	"bytes"
 	"context"
+	rand1 "crypto/rand"
 	"encoding/binary"
 	"fmt"
 	"io/ioutil"
 	"main/schema"
+	"math"
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"sync/atomic"
 
 	//	"reflect"
-
+	rand2 "math/rand"
 	"time"
 
 	_ "net/http/pprof"
@@ -76,25 +79,105 @@ func send(usemethod int, w *kafka.Writer, buf *[]byte, ops *uint64, errops *uint
 	}
 
 }
-
+func Bytes2Int(b []byte) uint32 {
+	bin_buf := bytes.NewBuffer(b)
+	var x uint32
+	binary.Read(bin_buf, binary.BigEndian, &x)
+	return x
+}
+func Bytes2Long(b []byte) uint64 {
+	length := float64(len(b)) - 1
+	var x float64
+	for _, value := range b {
+		tmp := math.Pow(10, length)
+		x = x + (float64(value)-48)*tmp
+		length--
+	}
+	return uint64(x)
+}
+func RandString(lenNum int) string {
+	str := strings.Builder{}
+	length := len(CHARS)
+	for i := 0; i < lenNum; i++ {
+		l := CHARS[rand2.Intn(length)]
+		str.WriteString(l)
+	}
+	return str.String()
+}
+func RandInt(lenNum int) []byte {
+	b := make([]byte, lenNum)
+	_, err := rand1.Read(b)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	return b
+}
 func writeToBuffer(record *avro.GenericRecord, buffer *bytes.Buffer, avrowriter *avro.GenericDatumWriter, thread int, threadChans []chan *[]byte) {
 	encoder := avro.NewBinaryEncoder(buffer)
 	for count := 0; count < recordnum; count++ {
 		switch schemaname {
 		case 1:
 			record.Set("c_netnum", int32(count))
-			record.Set("c_time", time.Now().Unix())
-		case 2:
-			record.Set("c_log_time", time.Now().UnixMilli())
-			record.Set("c_src_ipv4", int64(ipdata))
-			record.Set("c_dest_ipv4", int64(ipdata))
 			record.Set("c_ip", int64(ipdata))
-			record.Set("c_s_tunnel_ip", int64(ipdata))
-			record.Set("c_d_tunnel_ip", int64(ipdata))
+			record.Set("c_src_ipv4", int64(ipdata))
 			record.Set("c_src_ipv6", ipv6)
-			record.Set("c_dest_ipv6", ipv6)
-			record.Set("c_netnum", int32(count))
+			record.Set("c_s_tunnel_ip", int64(ipdata))
 			record.Set("c_s_tunnel_port", int32(8080))
+			record.Set("c_dest_ipv4", int64(ipdata))
+			record.Set("c_dest_ipv6", ipv6)
+			record.Set("c_d_tunnel_ip", int64(ipdata))
+			record.Set("c_log_time", time.Now().UnixMilli())
+		case 2:
+			record.Set("c_netnum", int32(count))
+			record.Set("c_ip", int64(ipdata))
+			record.Set("c_flowid", RandString(10))
+			record.Set("c_src_ipv4", int64(ipdata))
+			record.Set("c_src_ipv6", []byte(RandString(16)))
+			record.Set("c_src_port", int32(Bytes2Int(RandInt(4))))
+			record.Set("c_s_tunnel_ip", int64(ipdata))
+			record.Set("c_s_tunnel_port", int32(Bytes2Int(RandInt(4))))
+			record.Set("c_dest_ipv4", int64(ipdata))
+			record.Set("c_dest_ipv6", []byte(RandString(16)))
+			record.Set("c_dest_port", int32(Bytes2Int(RandInt(4))))
+			record.Set("c_d_tunnel_ip", int64(ipdata))
+			record.Set("c_d_tunnel_port", int32(Bytes2Int(RandInt(4))))
+			record.Set("c_packet_group", int32(Bytes2Int(RandInt(4))))
+			record.Set("c_proto_type", int32(Bytes2Int(RandInt(4))))
+			record.Set("c_connect_status", int32(Bytes2Int(RandInt(4))))
+			record.Set("c_direct", int32(Bytes2Int(RandInt(4))))
+			record.Set("c_server_dir", int32(Bytes2Int(RandInt(4))))
+			record.Set("c_up_packets", int64(Bytes2Long(RandInt(8))))
+			record.Set("c_up_bytes", int64(Bytes2Long(RandInt(8))))
+			record.Set("c_down_packets", int64(Bytes2Long(RandInt(8))))
+			record.Set("c_down_bytes", int64(Bytes2Long(RandInt(8))))
+			record.Set("c_c2s_packet_jitter", int32(Bytes2Int(RandInt(4))))
+			record.Set("c_s2c_packet_jitter", int32(Bytes2Int(RandInt(4))))
+			record.Set("c_log_time", time.Now().UnixMilli())
+			record.Set("c_app_type", RandString(10))
+			record.Set("c_stream_time", time.Now().UnixMilli())
+			record.Set("c_hostr", RandString(10))
+			record.Set("c_s_boundary", int64(Bytes2Long(RandInt(8))))
+			record.Set("c_s_region", int64(Bytes2Long(RandInt(8))))
+			record.Set("c_s_city", int64(Bytes2Long(RandInt(8))))
+			record.Set("c_s_district", int64(Bytes2Long(RandInt(8))))
+			record.Set("c_s_operators", int64(Bytes2Long(RandInt(8))))
+			record.Set("c_s_owner", RandString(10))
+			record.Set("c_d_boundary", int64(Bytes2Long(RandInt(8))))
+			record.Set("c_d_region", int64(Bytes2Long(RandInt(8))))
+			record.Set("c_d_city", int64(Bytes2Long(RandInt(8))))
+			record.Set("c_d_district", int64(Bytes2Long(RandInt(8))))
+			record.Set("c_d_operators", int64(Bytes2Long(RandInt(8))))
+			record.Set("c_d_owner", RandString(15))
+			record.Set("c_s_mark1", int64(Bytes2Long(RandInt(8))))
+			record.Set("c_s_mark2", int64(Bytes2Long(RandInt(8))))
+			record.Set("c_s_mark3", int64(Bytes2Long(RandInt(8))))
+			record.Set("c_s_mark4", int64(Bytes2Long(RandInt(8))))
+			record.Set("c_s_mark5", int64(Bytes2Long(RandInt(8))))
+			record.Set("c_d_mark1", int64(Bytes2Long(RandInt(8))))
+			record.Set("c_d_mark2", int64(Bytes2Long(RandInt(8))))
+			record.Set("c_d_mark3", int64(Bytes2Long(RandInt(8))))
+			record.Set("c_d_mark4", int64(Bytes2Long(RandInt(8))))
+			record.Set("c_d_mark5", int64(Bytes2Long(RandInt(8))))
 		}
 
 		err := avrowriter.Write(record, encoder)
@@ -126,6 +209,9 @@ var (
 	brokerips    []string
 	usemethod    int
 	eip          string
+	CHARS        = []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
+		"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
+		"1", "2", "3", "4", "5", "6", "7", "8", "9", "0"}
 )
 
 func initConf() {
@@ -207,9 +293,9 @@ func main() {
 	var parseschema string
 	switch schemaname {
 	case 1:
-		parseschema = schema.SchemarRaw
-	case 2:
 		parseschema = schema.SchemaPro
+	case 2:
+		parseschema = schema.SchemaProRadom
 	}
 	schema := avro.MustParseSchema(parseschema)
 	avrowriter := avro.NewGenericDatumWriter()
