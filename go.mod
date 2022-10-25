@@ -1,15 +1,13 @@
-module main
+module mpp-stress
 
-go 1.17
+go 1.19
 
 require (
+	github.com/bxcodec/faker/v4 v4.0.0-beta.3
+	github.com/panjf2000/ants v1.3.0
 	github.com/segmentio/kafka-go v0.4.35
-	gopkg.in/avro.v0 v0.0.0-20171217001914-a730b5802183
-)
-
-require (
 	github.com/sirupsen/logrus v1.9.0
-	github.com/spf13/viper v1.13.0
+	gopkg.in/avro.v0 v0.0.0-20171217001914-a730b5802183
 )
 
 require (
@@ -26,10 +24,13 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.4.1 // indirect
-	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 // indirect
 	golang.org/x/text v0.3.7 // indirect
-	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+)
+
+require (
+	github.com/spf13/viper v1.13.0
+	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 // indirect
 )

@@ -1,11 +1,11 @@
 [required]
-eip="10.253.31.238"
+eip="127.0.0.1"
 brokerips=["127.0.0.1:9094"]
 schemaname=1 # 切换schema：1--300B无随机数;2--300B带随机数
 topics=["mpp_topic1","mpp_topic2"]
-threadsnum=1 # 线程数
-recordnum=1 # 每条消息行数
-sndnum=20 # 总消息数
+threadsnum=8 # 线程数
+recordnum=3400 # 每条消息行数
+sndnum=96 # 总消息数
 runtostop=0 # 总运行时长：单位min
 
 [optional]
