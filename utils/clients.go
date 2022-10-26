@@ -42,6 +42,7 @@ func (h *HttpHandler) Do(data *bytes.Buffer) error {
 		return p_err
 	}
 	defer request.Body.Close()
+	request.Header.Add("Context-Type", "avro")
 	request.Header.Add("Connection", "keep-alive")
 	request.Header.Add("User", "a")
 	request.Header.Add("Password", "b")
