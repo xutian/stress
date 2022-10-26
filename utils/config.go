@@ -18,6 +18,8 @@ type Config struct {
 	Eip              string
 	MessageNum       int
 	Rond2Stop        float64
+	DpUser           string
+	DpPasswd         string
 }
 
 func NewConfByFile(path string) *Config {
@@ -27,7 +29,7 @@ func NewConfByFile(path string) *Config {
 	}
 	msgSize := viper.GetInt("required.recordnum") // RowNumPerFile
 	msgNum := viper.GetInt("required.sndnum")
-	
+
 	config := &Config{
 		Topics:           viper.GetStringSlice("required.topics"),
 		MessageSize:      msgSize,
@@ -41,6 +43,8 @@ func NewConfByFile(path string) *Config {
 		MethodId:         viper.GetInt("test.usemethod"),
 		Eip:              viper.GetString("required.eip"),
 		TotalMessageSize: msgNum * msgSize,
+		DpUser:           viper.GetString("dpconf.user"),
+		DpPasswd:         viper.GetString("dpconf.pwd"),
 	}
 	return config
 }

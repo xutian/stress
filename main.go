@@ -38,9 +38,9 @@ func loadStress(conf *utils.Config, statis *utils.Statistician, topic string) {
 
 	var handler interface{}
 	if conf.MethodId == 1 {
-		handler = utils.NewHttpHandler(conf.Eip, topic, statis)
+		handler = utils.NewHttpHandler(conf.Eip, topic, statis, conf)
 	} else {
-		handler = utils.NewKafkaHandler(conf.Brokers, topic, statis)
+		handler = utils.NewKafkaHandler(conf.Brokers, topic, statis, conf)
 		defer handler.(*utils.KafkaHandler).Writer.Close()
 	}
 

@@ -20,17 +20,19 @@ type HttpHandler struct {
 	Cli    *http.Client
 	Url    string
 	Statis *Statistician
+	Conf   *Config
 }
 
 func Init() {
 	log.SetLevel(log.TraceLevel)
 }
 
-func NewHttpHandler(eip string, topic string, statis *Statistician) *HttpHandler {
+func NewHttpHandler(eip string, topic string, statis *Statistician, conf *Config) *HttpHandler {
 	return &HttpHandler{
 		Cli:    &http.Client{},
 		Url:    fmt.Sprintf("http://%s/dataload?topic=%s", eip, topic),
 		Statis: statis,
+		Conf: conf,
 	}
 }
 
@@ -45,8 +47,8 @@ func (h *HttpHandler) Do(data *bytes.Buffer) error {
 	defer request.Body.Close()
 	request.Header.Add("Context-Type", "avro")
 	request.Header.Add("Connection", "keep-alive")
-	request.Header.Add("User", "a")
-	request.Header.Add("Password", "b")
+	request.Header.Add("User", h.Conf.DpUser)
+	request.Header.Add("Password", h.Conf.DpPasswd)
 	request.Header.Add("Content-Type", "application/avro")
 	request.Header.Add("Transfer-Encoding", "chunked")
 	startTime := time.Now()
@@ -83,9 +85,10 @@ type KafkaHandler struct {
 	IsAsync bool
 	Writer  *kafka.Writer
 	Statis  *Statistician
+	Conf    *Config
 }
 
-func NewKafkaHandler(brokers []string, topic string, statis *Statistician) *KafkaHandler {
+func NewKafkaHandler(brokers []string, topic string, statis *Statistician, conf *Config) *KafkaHandler {
 	writer := kafka.NewWriter(kafka.WriterConfig{
 		Brokers:    brokers,
 		Topic:      topic,
@@ -99,6 +102,7 @@ func NewKafkaHandler(brokers []string, topic string, statis *Statistician) *Kafk
 		IsAsync: true,
 		Writer:  writer,
 		Statis:  statis,
+		Conf:    conf,
 	}
 	return &handler
 }
