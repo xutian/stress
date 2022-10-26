@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	kafka "github.com/segmentio/kafka-go"
 	log "github.com/sirupsen/logrus"
@@ -48,11 +49,14 @@ func (h *HttpHandler) Do(data *bytes.Buffer) error {
 	request.Header.Add("Password", "b")
 	request.Header.Add("Content-Type", "application/avro")
 	request.Header.Add("Transfer-Encoding", "chunked")
+	startTime := time.Now()
 	response, s_err := h.Cli.Do(request)
 	if s_err != nil {
 		log.Errorf("Sent http request with error, %v", s_err)
 		return s_err
 	}
+	usedTime := time.Now().Sub(startTime).Milliseconds()
+	h.Statis.IncreaseSpentTime(uint64(usedTime))
 	h.Cli.CloseIdleConnections()
 	defer response.Body.Close()
 	content, err := ioutil.ReadAll(response.Body)

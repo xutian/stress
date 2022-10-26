@@ -44,7 +44,8 @@ func main() {
 
 	conf := utils.NewConfByFile(cfgPath)
 	conf.Validate()
-	statis := utils.NewStatistician(uint64(conf.TotalRecords))
+
+	statis := utils.NewStatistician(uint64(conf.TotalMessageSize))
 
 	poolSize := conf.Threads
 	log.Println(fmt.Sprintf("PoolSize: %v", poolSize))
@@ -56,9 +57,9 @@ func main() {
 		pipes[i] = &ch
 	}
 
-	wgIn.Add(int(statis.MaxRecords))
-	for i := 0; i < int(statis.MaxRecords); i++ {
-		go utils.PushMessage(&pipes, statis, conf.Records)
+	wgIn.Add(int(conf.MessageNum))
+	for i := 0; i < conf.MessageNum; i++ {
+		go utils.PushMessage(&pipes, statis, conf.MessageSize)
 		wgIn.Done()
 	}
 
@@ -82,8 +83,8 @@ func main() {
 	}
 	defer poolOut.Release()
 
-	wgOut.Add(int(statis.MaxRecords))
-	for i := 0; i < int(statis.MaxRecords); i++ {
+	wgOut.Add(conf.MessageNum)
+	for i := 0; i < conf.MessageNum; i++ {
 		poolOut.Invoke(1)
 	}
 	wgOut.Wait()

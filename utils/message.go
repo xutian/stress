@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/hex"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"math/rand"
 	"time"
 
@@ -396,13 +396,17 @@ func (m *DataRow) Dump2Avro() bytes.Buffer {
 func PushMessage(ptrPipe *[3]*chan *bytes.Buffer, statis *Statistician, bufSize int) {
 	pipList := *ptrPipe
 	msg := PackMessage(bufSize)
+	msgSize := len(msg.Bytes())
 	select {
 	case *pipList[0] <- msg:
-		statis.IncreaseCurrentRecords()
+		//statis.IncreaseCurrentRecords()
+		log.Debugf("Generate data to pipe0, size: %v", msgSize)
 	case *pipList[1] <- msg:
-		statis.IncreaseCurrentRecords()
+		//statis.IncreaseCurrentRecords()
+		log.Debugf("Generate data to pipe1, size: %v", msgSize)
 	case *pipList[2] <- msg:
-		statis.IncreaseCurrentRecords()
+		//statis.IncreaseCurrentRecords()
+		log.Debugf("Generate data to pipe2, size: %v", msgSize)
 	}
 	
 }
