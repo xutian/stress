@@ -21,7 +21,7 @@ var DataSchema = `{
 	"fields":[
 		{
 			"name":"c_netnum",
-			"type":["null","int"]
+			"type":"int"
 		},
 		{
 			"name":"c_ip",
@@ -49,7 +49,7 @@ var DataSchema = `{
 		},
 		{
 			"name":"c_s_tunnel_port",
-			"type":["null","int"]
+			"type":"int"
 		},
 		{
 			"name":"c_dest_ipv4",

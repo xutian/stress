@@ -7,6 +7,7 @@ import (
 )
 
 type Statistician struct {
+	Topic           string
 	StartTime       time.Time
 	EndTime         time.Time
 	FailedNum       uint64
@@ -17,7 +18,7 @@ type Statistician struct {
 	MsgSize         uint64
 }
 
-func NewStatistician(totalMsgSize uint64, msgSize uint64) *Statistician {
+func NewStatistician(totalMsgSize uint64, msgSize uint64, topic string) *Statistician {
 	//recordNum := totalSize / SizePerRecord
 	timeNow := time.Now()
 	return &Statistician{
@@ -29,6 +30,7 @@ func NewStatistician(totalMsgSize uint64, msgSize uint64) *Statistician {
 		TotalBytes2Sent: 0,
 		ActualTimeSpent: 0,
 		MsgSize:         msgSize,
+		Topic:           topic,
 	}
 }
 
@@ -52,13 +54,14 @@ func (s *Statistician) PrintReport() {
 	s.EndTime = time.Now()
 	spentSeconds := float64(s.ActualTimeSpent) / 1000
 	mByteSent := float64(s.TotalBytes2Sent) / (1024 * 1024)
-	fmt.Printf("StartTime: %v \n", s.StartTime)
-	fmt.Printf("EndTime: %v \n", s.EndTime)
+	fmt.Printf("============= Statis Report For Topic %s================\n", s.Topic)
 	fmt.Printf("Original Sent: %d \n", s.OriginalSent)
-	fmt.Printf("Volume: %.3f Mb\n", mByteSent)
 	fmt.Printf("Actual Sent: %d \n", s.SuccessfulNum)
 	fmt.Printf("Failed Sent: %d \n", s.FailedNum)
+	fmt.Printf("Volume: %.3f Mb\n", mByteSent)
 	fmt.Printf("IOPS: %.3f MB/s\n", mByteSent/spentSeconds)
+	fmt.Printf("StartTime: %v \n", s.StartTime)
+	fmt.Printf("EndTime: %v \n", s.EndTime)
 	fmt.Printf("Runing Time: %.2f Seconds\n", s.EndTime.Sub(s.StartTime).Seconds())
 	fmt.Println("")
 }

@@ -95,7 +95,7 @@ func main() {
 	for i := 0; i < len(conf.Topics); i++ {
 		wg.Add(1)
 		topic := conf.Topics[i]
-		statis := utils.NewStatistician(uint64(conf.TotalMessageSize), uint64(conf.MessageSize))
+		statis := utils.NewStatistician(uint64(conf.TotalMessageSize), uint64(conf.MessageSize), topic)
 		statisMap[topic] = statis
 		go func(i int) {
 			loadStress(conf, statis, topic)
@@ -103,9 +103,7 @@ func main() {
 		}(i)
 	}
 	wg.Wait()
-	for k, v := range statisMap {
-		fmt.Println("==================================")
-		fmt.Printf("Statis report for topic %s \n", k)
+	for _, v := range statisMap {
 		v.PrintReport()
 	}
 }

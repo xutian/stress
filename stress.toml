@@ -1,7 +1,7 @@
 [required]
 eip="127.0.0.1"
 brokerips=["127.0.0.1:9094"]
-schemaname=1 # 切换schema：1--300B无随机数;2--300B带随机数
+schemaname=1 # default=1
 topics=["mpp_topic1","mpp_topic2"]
 threadsnum=8 # 线程数
 recordnum=3400 # 每条消息行数
@@ -14,3 +14,7 @@ flowinterval=0 # 令牌间隔时间:单位ms (计算公式：flowinterval=1000*�
 
 [test]
 usemethod=1 # 默认为1,通过dataproxy发送数据;2为通过kafka发送数据 
+
+[dpconf]
+user
+pwd
