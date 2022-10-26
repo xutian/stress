@@ -23,7 +23,7 @@ type HttpHandler struct {
 }
 
 func Init() {
-	log.SetLevel(log.DebugLevel)
+	log.SetLevel(log.TraceLevel)
 }
 
 func NewHttpHandler(eip string, topic string, statis *Statistician) *HttpHandler {
@@ -56,22 +56,23 @@ func (h *HttpHandler) Do(data *bytes.Buffer) error {
 		return s_err
 	}
 	usedTime := time.Now().Sub(startTime).Milliseconds()
+
 	h.Statis.IncreaseSpentTime(uint64(usedTime))
 	h.Cli.CloseIdleConnections()
 	defer response.Body.Close()
 	content, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		log.Debugln(string(content))
+		log.Errorln(err)
 	}
 	if response.StatusCode != http.StatusOK {
 		h.Statis.IncreaseFailedNum()
-		log.Errorf("Response code: %v", response.StatusCode)
-		// print response body
+		log.Errorf("Response code: %v, %s", response.StatusCode, string(content))
 	} else {
 		lenData := len(data.Bytes())
-		log.Infof("Sent data length: %v Bytes", lenData)
 		h.Statis.IncreaseSuccessfulNum()
 		h.Statis.IncreaseTotalBytes2Sent(uint64(lenData))
+		log.Infof("Response code: %v, %s", response.StatusCode, string(content))
+
 	}
 	return nil
 }
@@ -114,7 +115,7 @@ func (k *KafkaHandler) Do(data *bytes.Buffer) {
 	} else {
 		k.Statis.IncreaseSuccessfulNum()
 		lenData := len(dataBytes)
-		log.Infof("Send kafka message size:%dB", lenData)
+		log.Infof("Send kafka message size: %d B", lenData)
 		k.Statis.IncreaseTotalBytes2Sent(uint64(lenData))
 	}
 }

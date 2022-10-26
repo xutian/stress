@@ -14,7 +14,6 @@ import (
 	"gopkg.in/avro.v0"
 )
 
-const SizePerRecord = 300
 
 var DataSchema = `{
 	"type":"record",

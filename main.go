@@ -24,7 +24,7 @@ func main() {
 	)
 	var cfgPath string
 
-	fd, err  := os.Create("cpu.prof")
+	fd, err := os.Create("cpu.prof")
 
 	if err != nil {
 		log.Fatalf("Create cpu.prof failed, %v", err)
@@ -45,7 +45,7 @@ func main() {
 	conf := utils.NewConfByFile(cfgPath)
 	conf.Validate()
 
-	statis := utils.NewStatistician(uint64(conf.TotalMessageSize))
+	statis := utils.NewStatistician(uint64(conf.TotalMessageSize), uint64(conf.MessageSize))
 
 	poolSize := conf.Threads
 	log.Println(fmt.Sprintf("PoolSize: %v", poolSize))
