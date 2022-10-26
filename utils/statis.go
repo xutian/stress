@@ -55,9 +55,10 @@ func (s *Statistician) PrintReport() {
 	fmt.Printf("StartTime: %v \n", s.StartTime)
 	fmt.Printf("EndTime: %v \n", s.EndTime)
 	fmt.Printf("Original Sent: %d \n", s.OriginalSent)
-	fmt.Printf("Volume: %d Bytes\n", s.TotalBytes2Sent)
+	fmt.Printf("Volume: %.3f Mb\n", mByteSent)
 	fmt.Printf("Actual Sent: %d \n", s.SuccessfulNum)
 	fmt.Printf("Failed Sent: %d \n", s.FailedNum)
 	fmt.Printf("IOPS: %.3f MB/s\n", mByteSent/spentSeconds)
 	fmt.Printf("Runing Time: %.2f Seconds\n", s.EndTime.Sub(s.StartTime).Seconds())
+	fmt.Println("")
 }
