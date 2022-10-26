@@ -4,16 +4,16 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/hex"
-	log "github.com/sirupsen/logrus"
 	"math/rand"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	//"math/rand"
 	"sync"
 
 	"gopkg.in/avro.v0"
 )
-
 
 var DataSchema = `{
 	"type":"record",
@@ -307,72 +307,89 @@ func RandIPv6() []byte {
 	return ip
 }
 
+func RandInt64(max int64) int64 {
+	data := time.Now().UnixNano()
+	if max == 0 {
+		return data
+	}
+	out := data % max
+	return out
+}
+
+func RandInt32(max int32) int32 {
+	data := int32(time.Now().Nanosecond())
+	if max == 0 {
+		return data
+	}
+	out := data % max
+	return out
+}
+
 func NewDataRow() *DataRow {
 	buf := &DataRow{
-		C_netnum:            int32(rand.Intn(256)),
+		C_netnum:            RandInt32(128),
 		C_ip:                RandIPv4(),
 		C_flowid:            RandStr(6),
 		C_src_ipv4:          RandIPv4(),
 		C_src_ipv6:          RandIPv6(),
-		C_src_port:          rand.Int31n(65535),
+		C_src_port:          RandInt32(65536),
 		C_s_tunnel_ip:       RandIPv4(),
-		C_s_tunnel_port:     rand.Int31n(65535),
+		C_s_tunnel_port:     RandInt32(65536),
 		C_dest_ipv4:         RandIPv4(),
 		C_dest_ipv6:         RandIPv6(),
-		C_dest_port:         rand.Int31n(65535),
+		C_dest_port:         RandInt32(65536),
 		C_d_tunnel_ip:       RandIPv4(),
-		C_d_tunnel_port:     rand.Int31n(65535),
-		C_packet_group:      rand.Int31n(512),
-		C_proto_type:        rand.Int31n(256),
-		C_connect_status:    rand.Int31n(128),
-		C_direct:            rand.Int31n(512),
-		C_server_dir:        rand.Int31n(512),
-		C_up_packets:        rand.Int63n(9223372036854775807),
-		C_up_bytes:          rand.Int63n(9223372036854775807),
-		C_down_packets:      rand.Int63n(9223372036854775807),
-		C_down_bytes:        rand.Int63n(9223372036854775807),
-		C_c2s_packet_jitter: rand.Int31n(65535),
-		C_s2c_packet_jitter: rand.Int31n(65535),
+		C_d_tunnel_port:     RandInt32(65536),
+		C_packet_group:      RandInt32(256),
+		C_proto_type:        RandInt32(128),
+		C_connect_status:    RandInt32(32),
+		C_direct:            RandInt32(512),
+		C_server_dir:        RandInt32(256),
+		C_up_packets:        RandInt64(0),
+		C_up_bytes:          RandInt64(0),
+		C_down_packets:      RandInt64(0),
+		C_down_bytes:        RandInt64(0),
+		C_c2s_packet_jitter: RandInt32(65536),
+		C_s2c_packet_jitter: RandInt32(65536),
 		C_log_time:          time.Now().UnixMilli(),
 		C_app_type:          RandStr(6),
 		C_stream_time:       time.Now().UnixMilli(),
 		C_hostr:             RandStr(16),
-		C_s_boundary:        rand.Int63n(128),
-		C_s_region:          rand.Int63n(128),
-		C_s_city:            rand.Int63n(128),
-		C_s_district:        rand.Int63n(128),
-		C_s_operators:       rand.Int63n(128),
+		C_s_boundary:        RandInt64(1024),
+		C_s_region:          RandInt64(512),
+		C_s_city:            RandInt64(2048),
+		C_s_district:        RandInt64(1024),
+		C_s_operators:       RandInt64(128),
 		C_s_owner:           RandStr(4),
-		C_d_boundary:        rand.Int63n(256),
-		C_d_region:          rand.Int63n(128),
-		C_d_city:            rand.Int63n(128),
-		C_d_district:        rand.Int63(),
-		C_d_operators:       rand.Int63n(128),
+		C_d_boundary:        RandInt64(1024),
+		C_d_region:          RandInt64(512),
+		C_d_city:            RandInt64(2048),
+		C_d_district:        RandInt64(1024),
+		C_d_operators:       RandInt64(128),
 		C_d_owner:           RandStr(6),
-		C_s_mark1:           rand.Int63n(64),
-		C_s_mark2:           rand.Int63n(64),
-		C_s_mark3:           rand.Int63n(64),
-		C_s_mark4:           rand.Int63n(64),
-		C_s_mark5:           rand.Int63n(64),
-		C_d_mark1:           rand.Int63n(64),
-		C_d_mark2:           rand.Int63n(64),
-		C_d_mark3:           rand.Int63n(64),
-		C_d_mark4:           rand.Int63n(64),
-		C_d_mark5:           rand.Int63n(64),
+		C_s_mark1:           RandInt64(65536),
+		C_s_mark2:           RandInt64(65536),
+		C_s_mark3:           RandInt64(65536),
+		C_s_mark4:           RandInt64(65536),
+		C_s_mark5:           RandInt64(65536),
+		C_d_mark1:           RandInt64(65536),
+		C_d_mark2:           RandInt64(65536),
+		C_d_mark3:           RandInt64(65536),
+		C_d_mark4:           RandInt64(65536),
+		C_d_mark5:           RandInt64(65536),
 	}
 	//faker.FakeData(&buf)
 	return buf
 }
 
-
-func PackMessage(bucketSize int) * bytes.Buffer {
-	var msg  bytes.Buffer
-	for i :=0; i < bucketSize; i++ {
+func PackMessage(bucketSize int) *bytes.Buffer {
+	var msg bytes.Buffer
+	for i := 0; i < bucketSize; i++ {
 		row := NewDataRow()
 		buf := row.Dump2Avro()
 		msg.Write(buf.Bytes())
 	}
-	return  &msg
+	return &msg
 }
 
 func (m *DataRow) Dump2Avro() bytes.Buffer {
@@ -407,7 +424,7 @@ func PushMessage(ptrPipe *[3]*chan *bytes.Buffer, statis *Statistician, bufSize 
 		//statis.IncreaseCurrentRecords()
 		log.Debugf("Generate data to pipe2, size: %v", msgSize)
 	}
-	
+
 }
 
 func sentByCli(b *bytes.Buffer, h interface{}) {
@@ -424,20 +441,20 @@ func sentByCli(b *bytes.Buffer, h interface{}) {
 
 func SendMessage(ptrPipe *[3]*chan *bytes.Buffer, h interface{}) {
 	pipList := *ptrPipe
-	
+
 	select {
 
-		case buf, ok := <- *pipList[0]:
-			if ok {
-				sentByCli(buf, h)
-			}
-		case buf, ok := <- *pipList[1]:
-			if ok {
-				sentByCli(buf, h)
-			}
-		case buf, ok := <- *pipList[2]:
-			if ok {
-				sentByCli(buf, h)
-			}
+	case buf, ok := <-*pipList[0]:
+		if ok {
+			sentByCli(buf, h)
 		}
+	case buf, ok := <-*pipList[1]:
+		if ok {
+			sentByCli(buf, h)
+		}
+	case buf, ok := <-*pipList[2]:
+		if ok {
+			sentByCli(buf, h)
+		}
+	}
 }
