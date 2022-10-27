@@ -14,7 +14,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func InitLog() {
+var conf *utils.Config
+var logLevel int
+
+func init() {
+	parserOpts()
 	dateStr := time.Now().Format("2006-01-02-15-04-05")
 	logfile := fmt.Sprintf("stress-%s", dateStr)
 	log.SetFormatter(&log.TextFormatter{})
@@ -25,7 +29,36 @@ func InitLog() {
 	writers := []io.Writer{file, os.Stdout}
 	fileAndStdoutWriter := io.MultiWriter(writers...)
 	log.SetOutput(fileAndStdoutWriter)
-	log.SetLevel(log.DebugLevel)
+	switch logLevel {
+	case 7:
+		log.SetLevel(log.TraceLevel)
+	case 6:
+		log.SetLevel(log.DebugLevel)
+	case 5:
+		log.SetLevel(log.InfoLevel)
+	case 4:
+		log.SetLevel(log.WarnLevel)
+	case 2:
+		log.SetLevel(log.ErrorLevel)
+	case 1:
+		log.SetLevel(log.FatalLevel)
+	case 0:
+		log.SetLevel(log.PanicLevel)
+	}
+
+}
+
+func parserOpts() {
+	var cfgPath string
+	flag.StringVar(&cfgPath,
+		"cfg",
+		"./stress.toml",
+		"conf file path, default is './stress.toml'")
+	flag.IntVar(&logLevel, "loglevel", 5, "Set mini log level to print")
+	flag.Parse()
+
+	conf = utils.NewConfByFile(cfgPath)
+	conf.Validate()
 }
 
 func dataProducer(conf *utils.Config, mp *map[string]*chan *bytes.Buffer, poolSize int) {
@@ -93,7 +126,6 @@ func dataConsumer(conf *utils.Config, topic string, out *chan *utils.Statisticia
 
 func main() {
 
-	var cfgPath string
 	var wg sync.WaitGroup
 	var wgReport sync.WaitGroup
 
@@ -110,14 +142,6 @@ func main() {
 	// }
 	// defer pprof.StopCPUProfile()
 
-	flag.StringVar(&cfgPath,
-		"cfg",
-		"./stress.toml",
-		"conf file path, default is './stress.toml'")
-	flag.Parse()
-
-	conf := utils.NewConfByFile(cfgPath)
-	conf.Validate()
 	log.Println(fmt.Sprintf("PoolSize: %v", conf.Threads))
 	topicNum := len(conf.Topics)
 	consumerPoolSize := conf.Threads
