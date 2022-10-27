@@ -7,8 +7,6 @@ import (
 	"mpp-stress/utils"
 	"time"
 
-	//"os"
-	//"runtime/pprof"
 	"sync"
 
 	"github.com/panjf2000/ants"
@@ -33,8 +31,10 @@ func loadStress(conf *utils.Config, topic string, out *chan *utils.Statistician)
 
 	wgIn.Add(int(conf.MessageNum))
 	for i := 0; i < conf.MessageNum; i++ {
-		go utils.PushMessage(&pipes, conf.MessageSize)
-		wgIn.Done()
+		go func () {
+                    utils.PushMessage(&pipes, conf.MessageSize)
+		    wgIn.Done()
+		}()
 	}
 
 	var handler interface{}
