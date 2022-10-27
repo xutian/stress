@@ -7,12 +7,8 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/elodina/go-avro"
 	log "github.com/sirupsen/logrus"
-
-	//"math/rand"
-	"sync"
-
-	"gopkg.in/avro.v0"
 )
 
 var DataSchema = `{
@@ -383,30 +379,18 @@ func NewDataRow() *DataRow {
 }
 
 func PackMessage(bucketSize int) *bytes.Buffer {
-	var msg bytes.Buffer
-	for i := 0; i < bucketSize; i++ {
-		row := NewDataRow()
-		buf := row.Dump2Avro()
-		msg.Write(buf.Bytes())
-	}
-	return &msg
-}
-
-func (m *DataRow) Dump2Avro() bytes.Buffer {
-	var buf bytes.Buffer
-	var once sync.Once
+	buffer := &bytes.Buffer{}
+	schema := avro.MustParseSchema(DataSchema)
+	enc := avro.NewBinaryEncoder(buffer)
 	writer := avro.NewSpecificDatumWriter()
-
-	// Only create one writer
-	once.Do(
-		func() {
-			GetSchemaWriter(writer)
-		})
-	encoder := avro.NewBinaryEncoder(&buf)
-	if err := writer.Write(m, encoder); err != nil {
-		log.Fatal(err)
+	writer.SetSchema(schema)
+	for i := 0; i < bucketSize; i++ {
+		in := NewDataRow()
+		if err := writer.Write(in, enc); err != nil {
+			log.Errorf("Generate avro data with error, %v", err)
+		}
 	}
-	return buf
+	return buffer
 }
 
 func PushMessage(ptrPipe *[3]*chan *bytes.Buffer, bufSize int) {
@@ -444,14 +428,17 @@ func SendMessage(ptrPipe *[3]*chan *bytes.Buffer, h interface{}, chanOut *chan *
 	case buf, ok := <-*pipList[0]:
 		if ok {
 			sentByCli(buf, h, chanOut)
+			buf.Reset()
 		}
 	case buf, ok := <-*pipList[1]:
 		if ok {
 			sentByCli(buf, h, chanOut)
+			buf.Reset()
 		}
 	case buf, ok := <-*pipList[2]:
 		if ok {
 			sentByCli(buf, h, chanOut)
+			buf.Reset()
 		}
 	}
 }
