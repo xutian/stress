@@ -4,40 +4,65 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"io"
 	"mpp-stress/utils"
-	"time"
-
+	"os"
 	"sync"
+	"time"
 
 	"github.com/panjf2000/ants"
 	log "github.com/sirupsen/logrus"
 )
 
-func Init() {
+func InitLog() {
+	dateStr := time.Now().Format("2006-01-02-15-04-05")
+	logfile := fmt.Sprintf("stress-%s", dateStr)
+	log.SetFormatter(&log.TextFormatter{})
+	file, err := os.OpenFile(logfile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Errorf("Create log file %s with error %v", logfile, err)
+	}
+	writers := []io.Writer{file, os.Stdout}
+	fileAndStdoutWriter := io.MultiWriter(writers...)
+	log.SetOutput(fileAndStdoutWriter)
 	log.SetLevel(log.DebugLevel)
 }
 
-func loadStress(conf *utils.Config, topic string, out *chan *utils.Statistician) {
-	var (
-		wgIn  sync.WaitGroup
-		wgOut sync.WaitGroup
-	)
-	// Make multi-channel for select and write data
-	var pipes [3]*chan *bytes.Buffer
-	for i := 0; i < len(pipes); i++ {
-		ch := make(chan *bytes.Buffer, 64)
-		pipes[i] = &ch
-	}
+func dataProducer(conf *utils.Config, mp *map[string]*chan *bytes.Buffer, poolSize int) {
+	//// create task pool to generate data and sent data to channel
+	var wg sync.WaitGroup
+	pool, err := ants.NewPoolWithFunc(
+		poolSize,
+		func(i interface{}) {
+			for _, topic := range conf.Topics {
+				pipe := (*mp)[topic]
+				utils.PushMessage(pipe, conf.MessageSize)
+			}
+			wg.Done()
+		})
 
-	wgIn.Add(int(conf.MessageNum))
+	if err != nil {
+		log.Fatalf("Create task pool for make data failed with error %v", err)
+	}
+	defer pool.Release()
+	wg.Add(conf.MessageNum)
+	log.Debugln("Begin to product data...")
 	for i := 0; i < conf.MessageNum; i++ {
-		go func () {
-                    utils.PushMessage(&pipes, conf.MessageSize)
-		    wgIn.Done()
-		}()
+		pool.Invoke(i)
 	}
+	wg.Wait()
+	for _, topic := range conf.Topics {
+		ch := (*mp)[topic]
+		close(*ch)
+	}
+	log.Debugln("Put data to channel done!")
+}
 
+func dataConsumer(conf *utils.Config, topic string, out *chan *utils.Statistician, pipe *chan *bytes.Buffer, poolSize int) {
+
+	var wgOut sync.WaitGroup
 	var handler interface{}
+
 	if conf.MethodId == 1 {
 		handler = utils.NewHttpHandler(topic, conf)
 	} else {
@@ -47,8 +72,9 @@ func loadStress(conf *utils.Config, topic string, out *chan *utils.Statistician)
 
 	// New pool for send data
 	poolOut, o_err := ants.NewPoolWithFunc(
-		int(conf.Threads), func(i interface{}) {
-			utils.SendMessage(&pipes, handler, out)
+		poolSize,
+		func(i interface{}) {
+			utils.SendMessage(pipe, handler, out)
 			wgOut.Done()
 		})
 	if o_err != nil {
@@ -57,17 +83,19 @@ func loadStress(conf *utils.Config, topic string, out *chan *utils.Statistician)
 	defer poolOut.Release()
 
 	wgOut.Add(conf.MessageNum)
+	log.Debugln("Begin to consum data...")
 	for i := 0; i < conf.MessageNum; i++ {
-		poolOut.Invoke(1)
+		poolOut.Invoke(i)
 	}
-	wgIn.Wait()
 	wgOut.Wait()
+	log.Debugln("Sent data Done!")
 }
 
 func main() {
 
 	var cfgPath string
 	var wg sync.WaitGroup
+	var wgReport sync.WaitGroup
 
 	//// Code for anysiszied CPU usage
 	// fd, err := os.Create("cpu.prof")
@@ -91,34 +119,48 @@ func main() {
 	conf := utils.NewConfByFile(cfgPath)
 	conf.Validate()
 	log.Println(fmt.Sprintf("PoolSize: %v", conf.Threads))
+	topicNum := len(conf.Topics)
+	consumerPoolSize := conf.Threads
+	producerPoolSize := consumerPoolSize * 2
+	//capStatisChan := conf.MessageNum
+	capStatisChan := conf.Threads
 
-	chanStatis := make(chan *utils.Statistician, len(conf.Topics))
+	// make chan to recive statis records
+	chanStatis := make(chan *utils.Statistician, capStatisChan)
+
+	// make to save report for each topic
 	reports := make(map[string]*utils.Report)
 
-	// collect statis records, calculate and print summary
+	//map to keep channel ptr for each topic
+	chanPipes := make(map[string]*chan *bytes.Buffer)
 
+	wgReport.Add(topicNum)
 	for _, topic := range conf.Topics {
-		wg.Add(1)
-		reports[topic] = utils.NewReport(topic, conf)
+		pipe := make(chan *bytes.Buffer, producerPoolSize+1)
+		chanPipes[topic] = &pipe
+		report := utils.NewReport(topic, conf, &chanStatis)
+		reports[topic] = report
+		go report.Calc(&wgReport)
+	}
+
+	go dataProducer(conf, &chanPipes, producerPoolSize)
+	// collect statis records, calculate and print summary
+	wg.Add(topicNum)
+	for _, topic := range conf.Topics {
 		go func(topic string) {
-			loadStress(conf, topic, &chanStatis)
-			wg.Done()
+			var pipe = chanPipes[topic]
+			dataConsumer(conf, topic, &chanStatis, pipe, consumerPoolSize)
 			reports[topic].EndTime = time.Now()
+			wg.Done()
+			log.Debugf("Test done for topic %s!", topic)
 		}(topic)
 	}
+	//wait every topic done
 	wg.Wait()
-
-	for data := range chanStatis {
-		topic := data.Topic
-		report := reports[topic]
-		if data.State {
-			report.SuccessfulRows += int64(report.MessageSize)
-			report.TotalSentBytes += data.SentBytes
-			report.TotalSentTime += data.SentTime
-		} else {
-			report.FailedRows += int64(report.MessageSize)
-		}
-	}
+	log.Debugln("Test done for all topics")
+	//DO NOT REMOVE THIS LINE
+	close(chanStatis)
+	wgReport.Wait()
 	for _, v := range reports {
 		v.Print()
 	}

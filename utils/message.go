@@ -393,19 +393,12 @@ func PackMessage(bucketSize int) *bytes.Buffer {
 	return buffer
 }
 
-func PushMessage(ptrPipe *[3]*chan *bytes.Buffer, bufSize int) {
-	pipList := *ptrPipe
+func PushMessage(ptrPipe *chan *bytes.Buffer, bufSize int) {
+	pipe := *ptrPipe
 	msg := PackMessage(bufSize)
 	msgSize := len(msg.Bytes())
-	select {
-	case *pipList[0] <- msg:
-		log.Debugf("Generate data to pipe0, size: %v", msgSize)
-	case *pipList[1] <- msg:
-		log.Debugf("Generate data to pipe1, size: %v", msgSize)
-	case *pipList[2] <- msg:
-		log.Debugf("Generate data to pipe2, size: %v", msgSize)
-	}
-
+	pipe <- msg
+	log.Debugf("Generate data to pipe0, size: %v", msgSize)
 }
 
 func sentByCli(b *bytes.Buffer, h interface{}, chanOut *chan *Statistician) {
@@ -420,25 +413,10 @@ func sentByCli(b *bytes.Buffer, h interface{}, chanOut *chan *Statistician) {
 	b.Reset()
 }
 
-func SendMessage(ptrPipe *[3]*chan *bytes.Buffer, h interface{}, chanOut *chan *Statistician) {
-	pipList := *ptrPipe
-
-	select {
-
-	case buf, ok := <-*pipList[0]:
-		if ok {
-			sentByCli(buf, h, chanOut)
-			buf.Reset()
-		}
-	case buf, ok := <-*pipList[1]:
-		if ok {
-			sentByCli(buf, h, chanOut)
-			buf.Reset()
-		}
-	case buf, ok := <-*pipList[2]:
-		if ok {
-			sentByCli(buf, h, chanOut)
-			buf.Reset()
-		}
+func SendMessage(ptrPipe *chan *bytes.Buffer, h interface{}, chanOut *chan *Statistician) {
+	buf, ok := <-*ptrPipe
+	if ok {
+		sentByCli(buf, h, chanOut)
+		buf.Reset()
 	}
 }
