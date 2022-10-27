@@ -2,66 +2,68 @@ package utils
 
 import (
 	"fmt"
-	"sync/atomic"
 	"time"
 )
 
 type Statistician struct {
-	Topic           string
-	StartTime       time.Time
-	EndTime         time.Time
-	FailedNum       uint64
-	SuccessfulNum   uint64
-	TotalBytes2Sent uint64
-	ActualTimeSpent uint64
-	OriginalSent    uint64
-	MsgSize         uint64
+	Topic     string
+	SentTime  int64
+	SentBytes int64
+	State     bool // is Reqeust response Ok
 }
 
-func NewStatistician(totalMsgSize uint64, msgSize uint64, topic string) *Statistician {
-	//recordNum := totalSize / SizePerRecord
-	timeNow := time.Now()
+func NewStatistician(topic string) *Statistician {
+
 	return &Statistician{
-		StartTime:       timeNow,
-		EndTime:         timeNow,
-		FailedNum:       0,
-		OriginalSent:    totalMsgSize,
-		SuccessfulNum:   0,
-		TotalBytes2Sent: 0,
-		ActualTimeSpent: 0,
-		MsgSize:         msgSize,
-		Topic:           topic,
+		Topic:     topic,
+		SentTime:  0,
+		SentBytes: 0,
+		State:     false,
 	}
 }
 
-func (s *Statistician) IncreaseFailedNum() {
-	atomic.AddUint64(&(s.FailedNum), s.MsgSize)
+type Report struct {
+	Name           string
+	StartTime      time.Time
+	EndTime        time.Time
+	TotalSentBytes int64
+	TotalSentTime  int64
+	TotalSentRows  int64
+	SuccessfulRows int64
+	FailedRows     int64
+	MessageSize    int
+	ThreadsNum     int
 }
 
-func (s *Statistician) IncreaseSuccessfulNum() {
-	atomic.AddUint64(&(s.SuccessfulNum), s.MsgSize)
+func NewReport(name string, conf *Config) *Report {
+	return &Report{
+		Name:           name,
+		StartTime:      time.Now(),
+		EndTime:        time.Now(),
+		TotalSentBytes: 0,
+		TotalSentTime:  0,
+		TotalSentRows:  0,
+		SuccessfulRows: 0,
+		FailedRows:     0,
+		MessageSize:    conf.MessageSize,
+		ThreadsNum:     conf.Threads,
+	}
 }
 
-func (s *Statistician) IncreaseTotalBytes2Sent(size uint64) {
-	atomic.AddUint64(&(s.TotalBytes2Sent), size)
-}
+func (r *Report) Print() {
+	fmt.Printf("==============Summary for Topic %s======================\n", r.Name)
+	fmt.Printf("Start At: %v \n", r.StartTime)
+	fmt.Printf("Threads: %d \n", r.ThreadsNum)
+	fmt.Printf("SpentTime: %.3f s\n", float64(r.TotalSentTime/1000))
 
-func (s *Statistician) IncreaseSpentTime(d uint64) {
-	atomic.AddUint64(&(s.ActualTimeSpent), d)
-}
+	fmt.Printf("TotalRows: %d \n", r.TotalSentRows)
+	fmt.Printf("FailedRows: %d \n", r.FailedRows)
+	fmt.Printf("SuccessfulRows: %d \n", r.SuccessfulRows)
+	fmt.Printf("RowsPerSeconds: %.3f \n", float64(r.TotalSentRows/r.TotalSentTime))
+	fmt.Printf("RowsPerReqeust: %d \n", r.MessageSize)
 
-func (s *Statistician) PrintReport() {
-	s.EndTime = time.Now()
-	spentSeconds := float64(s.ActualTimeSpent) / 1000
-	mByteSent := float64(s.TotalBytes2Sent) / (1024 * 1024)
-	fmt.Printf("============= Statis Report For Topic %s================\n", s.Topic)
-	fmt.Printf("Original Sent: %d \n", s.OriginalSent)
-	fmt.Printf("Actual Sent: %d \n", s.SuccessfulNum)
-	fmt.Printf("Failed Sent: %d \n", s.FailedNum)
-	fmt.Printf("Volume: %.3f Mb\n", mByteSent)
-	fmt.Printf("IOPS: %.3f MB/s\n", mByteSent/spentSeconds)
-	fmt.Printf("StartTime: %v \n", s.StartTime)
-	fmt.Printf("EndTime: %v \n", s.EndTime)
-	fmt.Printf("Runing Time: %.2f Seconds\n", s.EndTime.Sub(s.StartTime).Seconds())
-	fmt.Println("")
+	fmt.Printf("SentSize: %.3f M \n", float64(r.TotalSentBytes/(2<<19)))
+	fmt.Printf("MbytesPerSeonds: %.3f \n", float64(r.TotalSentBytes/r.TotalSentTime)/(2<<19))
+	fmt.Printf("ElapsedTime: %.3f s \n", r.EndTime.Sub(r.StartTime).Seconds())
+	fmt.Printf("StopTime: %v \n", r.EndTime)
 }

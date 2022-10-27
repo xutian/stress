@@ -409,52 +409,49 @@ func (m *DataRow) Dump2Avro() bytes.Buffer {
 	return buf
 }
 
-func PushMessage(ptrPipe *[3]*chan *bytes.Buffer, statis *Statistician, bufSize int) {
+func PushMessage(ptrPipe *[3]*chan *bytes.Buffer, bufSize int) {
 	pipList := *ptrPipe
 	msg := PackMessage(bufSize)
 	msgSize := len(msg.Bytes())
 	select {
 	case *pipList[0] <- msg:
-		//statis.IncreaseCurrentRecords()
 		log.Debugf("Generate data to pipe0, size: %v", msgSize)
 	case *pipList[1] <- msg:
-		//statis.IncreaseCurrentRecords()
 		log.Debugf("Generate data to pipe1, size: %v", msgSize)
 	case *pipList[2] <- msg:
-		//statis.IncreaseCurrentRecords()
 		log.Debugf("Generate data to pipe2, size: %v", msgSize)
 	}
 
 }
 
-func sentByCli(b *bytes.Buffer, h interface{}) {
+func sentByCli(b *bytes.Buffer, h interface{}, chanOut *chan *Statistician) {
 	switch t := h.(type) {
 	case *HttpHandler:
-		h.(*HttpHandler).Do(b)
+		h.(*HttpHandler).Do(b, chanOut)
 	case *KafkaHandler:
-		h.(*KafkaHandler).Do(b)
+		h.(*KafkaHandler).Do(b, chanOut)
 	default:
 		log.Fatalf("Unknow handler type %T", t)
 	}
 	b.Reset()
 }
 
-func SendMessage(ptrPipe *[3]*chan *bytes.Buffer, h interface{}) {
+func SendMessage(ptrPipe *[3]*chan *bytes.Buffer, h interface{}, chanOut *chan *Statistician) {
 	pipList := *ptrPipe
 
 	select {
 
 	case buf, ok := <-*pipList[0]:
 		if ok {
-			sentByCli(buf, h)
+			sentByCli(buf, h, chanOut)
 		}
 	case buf, ok := <-*pipList[1]:
 		if ok {
-			sentByCli(buf, h)
+			sentByCli(buf, h, chanOut)
 		}
 	case buf, ok := <-*pipList[2]:
 		if ok {
-			sentByCli(buf, h)
+			sentByCli(buf, h, chanOut)
 		}
 	}
 }

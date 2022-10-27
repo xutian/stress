@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"mpp-stress/utils"
+	"time"
 
 	//"os"
 	//"runtime/pprof"
@@ -18,7 +19,7 @@ func Init() {
 	log.SetLevel(log.DebugLevel)
 }
 
-func loadStress(conf *utils.Config, statis *utils.Statistician, topic string) {
+func loadStress(conf *utils.Config, topic string, out *chan *utils.Statistician) {
 	var (
 		wgIn  sync.WaitGroup
 		wgOut sync.WaitGroup
@@ -32,22 +33,22 @@ func loadStress(conf *utils.Config, statis *utils.Statistician, topic string) {
 
 	wgIn.Add(int(conf.MessageNum))
 	for i := 0; i < conf.MessageNum; i++ {
-		go utils.PushMessage(&pipes, statis, conf.MessageSize)
+		go utils.PushMessage(&pipes, conf.MessageSize)
 		wgIn.Done()
 	}
 
 	var handler interface{}
 	if conf.MethodId == 1 {
-		handler = utils.NewHttpHandler(conf.Eip, topic, statis, conf)
+		handler = utils.NewHttpHandler(topic, conf)
 	} else {
-		handler = utils.NewKafkaHandler(conf.Brokers, topic, statis, conf)
+		handler = utils.NewKafkaHandler(topic, conf)
 		defer handler.(*utils.KafkaHandler).Writer.Close()
 	}
 
 	// New pool for send data
 	poolOut, o_err := ants.NewPoolWithFunc(
 		int(conf.Threads), func(i interface{}) {
-			utils.SendMessage(&pipes, handler)
+			utils.SendMessage(&pipes, handler, out)
 			wgOut.Done()
 		})
 	if o_err != nil {
@@ -91,19 +92,35 @@ func main() {
 	conf.Validate()
 	log.Println(fmt.Sprintf("PoolSize: %v", conf.Threads))
 
-	statisMap := make(map[string]*utils.Statistician, len(conf.Topics))
-	for i := 0; i < len(conf.Topics); i++ {
+	chanStatis := make(chan *utils.Statistician, len(conf.Topics))
+	reports := make(map[string]*utils.Report)
+
+	// collect statis records, calculate and print summary
+
+	for _, topic := range conf.Topics {
 		wg.Add(1)
-		topic := conf.Topics[i]
-		statis := utils.NewStatistician(uint64(conf.TotalMessageSize), uint64(conf.MessageSize), topic)
-		statisMap[topic] = statis
-		go func(i int) {
-			loadStress(conf, statis, topic)
+		reports[topic] = utils.NewReport(topic, conf)
+		go func(topic string) {
+			loadStress(conf, topic, &chanStatis)
 			wg.Done()
-		}(i)
+			reports[topic].EndTime = time.Now()
+		}(topic)
 	}
 	wg.Wait()
-	for _, v := range statisMap {
-		v.PrintReport()
+
+	for data := range chanStatis {
+		topic := data.Topic
+		report := reports[topic]
+		if data.State {
+			report.SuccessfulRows += int64(report.MessageSize)
+			report.TotalSentBytes += data.SentBytes
+			report.TotalSentTime += data.SentTime
+		} else {
+			report.FailedRows += int64(report.MessageSize)
+		}
 	}
+	for _, v := range reports {
+		v.Print()
+	}
+
 }
