@@ -62,10 +62,9 @@ func (h *HttpHandler) Do(data *bytes.Buffer, chanOut *chan *Statistician) error 
 
 	h.Cli.CloseIdleConnections()
 	defer response.Body.Close()
-
+	content, err := ioutil.ReadAll(response.Body)
 	if response.StatusCode != http.StatusOK {
 		statis.State = false
-		content, err := ioutil.ReadAll(response.Body)
 		if err != nil {
 			log.Errorln(err)
 		}
@@ -73,6 +72,7 @@ func (h *HttpHandler) Do(data *bytes.Buffer, chanOut *chan *Statistician) error 
 	} else {
 		statis.State = true
 		statis.SentBytes = int64(len(data.Bytes()))
+		log.Debugf("Response code: %v, %s", response.StatusCode, string(content))
 	}
 	*chanOut <- statis
 	return nil
@@ -114,7 +114,7 @@ func (k *KafkaHandler) Do(data *bytes.Buffer, chanOut *chan *Statistician) {
 	startTime := time.Now()
 	err := k.Writer.WriteMessages(context.Background(), msg)
 	statis.SentTime = time.Since(startTime).Microseconds()
-	if  err != nil {
+	if err != nil {
 		log.Errorf("Sent messgae to kafka with errr, %v", err)
 		statis.State = false
 	} else {

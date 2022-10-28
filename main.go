@@ -19,7 +19,7 @@ var logLevel int
 func init() {
 	parserOpts()
 	dateStr := time.Now().Format("2006-01-02-15-04-05")
-	logfile := fmt.Sprintf("stress-%s", dateStr)
+	logfile := fmt.Sprintf("stress-%s.log", dateStr)
 	log.SetFormatter(&log.TextFormatter{})
 	file, err := os.OpenFile(logfile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
@@ -53,7 +53,7 @@ func parserOpts() {
 		"cfg",
 		"./stress.toml",
 		"conf file path, default is './stress.toml'")
-	flag.IntVar(&logLevel, "loglevel", 5, "Set mini log level to print")
+	flag.IntVar(&logLevel, "loglevel", 6, "Set mini log level to print")
 	flag.Parse()
 
 	conf = utils.NewConfByFile(cfgPath)

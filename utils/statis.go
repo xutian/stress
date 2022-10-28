@@ -2,8 +2,11 @@ package utils
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type Statistician struct {
@@ -71,29 +74,36 @@ func Calc(ptrMapReport *map[string]*Report, ptrChanStatis *chan *Statistician, w
 			report.FailedRows += int64(report.MessageSize)
 		}
 		report.TotalSentRows = report.FailedRows + report.SuccessfulRows
-		report.SizePerSecond = (float64(report.TotalSentBytes) / (2 << 19)) / (float64(report.TotalSentTime) / 1000)
-		report.RowPerSecond = float64(report.TotalSentRows) / float64(report.TotalSentTime)
+		sentMib := float64(report.TotalSentBytes / (2 << 19))
+		spentSeconds := float64(report.TotalSentTime/1000) + 0.001
+		report.SizePerSecond = sentMib / spentSeconds
+		report.RowPerSecond = float64(report.TotalSentRows) / spentSeconds
 	}
 
 	wg.Done()
 }
 
 func (r *Report) Print() {
-	fmt.Printf("==============Summary for Topic %s======================\n", r.Name)
-	fmt.Printf("Start At: %v \n", r.StartTime)
-	fmt.Printf("Threads: %d \n", r.ThreadsNum)
-	fmt.Printf("SpentTime: %.3f s\n", float64(r.TotalSentTime/1000))
+	var tableContent [13]string
+	tableContent[0] = fmt.Sprintf("==============Summary for Topic %s======================", r.Name)
+	tableContent[1] = fmt.Sprintf("Start At: %v", r.StartTime)
+	tableContent[2] = fmt.Sprintf("Threads: %d", r.ThreadsNum)
+	tableContent[3] = fmt.Sprintf("SpentTime: %.3fs", float64(r.TotalSentTime/1000)+0.001)
+	tableContent[4] = fmt.Sprintf("Transmit Rows: %d (Total transmit rows)", r.TotalSentRows)
+	tableContent[5] = fmt.Sprintf("Transmit MiB: %.3f M", float64(r.TotalSentBytes/(2<<19)))
+	tableContent[6] = fmt.Sprintf("Transmit Failed Rows: %d", r.FailedRows)
+	tableContent[7] = fmt.Sprintf("Transmit Successful Rows: %d", r.SuccessfulRows)
+	tableContent[8] = fmt.Sprintf("Transmission Rate1: %.3f M/s (MiB per seconds)", r.SizePerSecond)
+	tableContent[9] = fmt.Sprintf("Transmission Rate2: %.3f R/s (Rows per seconds)", r.RowPerSecond)
+	tableContent[10] = fmt.Sprintf("Packet Message Size: %d R/P (Rows per packet message)", r.MessageSize)
+	tableContent[11] = fmt.Sprintf("ElapsedTime: %.3f s", r.EndTime.Sub(r.StartTime).Seconds())
+	tableContent[12] = fmt.Sprintf("StopTime: %v", r.EndTime)
+	for i := 0; i < len(tableContent); i++ {
+		log.Infoln(tableContent[i])
+	}
+	tableStr := strings.Join(tableContent[:], "\n")
+	fmt.Println(tableStr)
 
-	fmt.Printf("Transmit Rows: %d (Total transmit rows)\n", r.TotalSentRows)
-	fmt.Printf("Transmit MiB: %.3f M \n", float64(r.TotalSentBytes/(2<<19)))
-	fmt.Printf("Transmit Failed Rows: %d \n", r.FailedRows)
-	fmt.Printf("Transmit Successful Rows: %d \n", r.SuccessfulRows)
-	fmt.Printf("Transmission Rate1: %.3f M/s (MiB per seconds)\n", r.SizePerSecond)
-	fmt.Printf("Transmission Rate2: %.3f R/s (Rows per seconds)\n", r.RowPerSecond)
-	fmt.Printf("Packet Message Size: %d R/P (Rows per packet message)\n", r.MessageSize)
-
-	fmt.Printf("ElapsedTime: %.3f s \n", r.EndTime.Sub(r.StartTime).Seconds())
-	fmt.Printf("StopTime: %v \n", r.EndTime)
 }
 
 func PrintSummary4Topics(ptrReports *map[string]*Report, wg *sync.WaitGroup) {
