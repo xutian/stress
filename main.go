@@ -23,7 +23,7 @@ func init() {
 	log.SetFormatter(&log.TextFormatter{})
 	file, err := os.OpenFile(logfile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
-		log.Errorf("Create log file %s with error %v", logfile, err)
+		log.Fatalf("Create log file %s with error %v", logfile, err)
 	}
 	writers := []io.Writer{file, os.Stdout}
 	fileAndStdoutWriter := io.MultiWriter(writers...)
@@ -82,7 +82,6 @@ func main() {
 	topicNum := len(conf.Topics)
 	consumerPoolSize := conf.Threads
 	producerPoolSize := consumerPoolSize * 2
-	//capStatisChan := conf.MessageNum
 	capStatisChan := conf.Threads
 
 	// make chan to recive statis records
@@ -100,6 +99,8 @@ func main() {
 		chanPipes[topic] = &pipe
 		report := utils.NewReport(topic, conf, &chanStatis)
 		reports[topic] = report
+		//Start go routine to consume elements in channel chanStatis
+		//to avoid process blocked after chanStatis is full
 		go report.Calc(&wgReport)
 	}
 
@@ -115,10 +116,11 @@ func main() {
 			log.Debugf("Test done for topic %s!", topic)
 		}(topic)
 	}
-	//wait every topic done
+	//Wait Consumer goroutine for all topic done
 	wg.Wait()
 	log.Debugln("Test done for all topics")
-	// close channel to finish calc function
+	//Close statis channel to finish Calc goroutine,
+	//If not close the goroutine main goroutine blocked
 	close(chanStatis)
 	wgReport.Wait()
 	for _, v := range reports {
