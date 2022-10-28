@@ -99,7 +99,7 @@ func main() {
 		reports[topic] = report
 		//Start go routine to consume elements in channel chanStatis
 		//to avoid process blocked after chanStatis is full
-		go report.Calc(&wgReport)
+		go utils.Calc(&reports, &chanStatis, &wgReport)
 	}
 
 	go utils.DataProducer(conf, &chanPipes, producerPoolSize)

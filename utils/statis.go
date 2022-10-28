@@ -57,24 +57,24 @@ func NewReport(name string, conf *Config, chanStatis *chan *Statistician) *Repor
 	}
 }
 
-func (r *Report) Calc(wg *sync.WaitGroup) {
-	for data := range *r.ChanStatis {
-		if data.Topic != r.Name {
-			continue
-		}
-
+func Calc(ptrMapReport *map[string]*Report, ptrChanStatis *chan *Statistician, wg *sync.WaitGroup) {
+	chanStatis := *ptrChanStatis
+	mapReports := *ptrMapReport
+	for data := range chanStatis {
+		topic := data.Topic
+		report := mapReports[topic]
 		if data.State {
-			r.SuccessfulRows += int64(r.MessageSize)
-			r.TotalSentBytes += data.SentBytes
-			r.TotalSentTime += data.SentTime
+			report.SuccessfulRows += int64(report.MessageSize)
+			report.TotalSentBytes += data.SentBytes
+			report.TotalSentTime += data.SentTime
 		} else {
-			r.FailedRows += int64(r.MessageSize)
+			report.FailedRows += int64(report.MessageSize)
 		}
-
+		report.TotalSentRows = report.FailedRows + report.SuccessfulRows
+		report.SizePerSecond = (float64(report.TotalSentBytes) / (2 << 19)) / (float64(report.TotalSentTime) / 1000)
+		report.RowPerSecond = float64(report.TotalSentRows) / float64(report.TotalSentTime)
 	}
-	r.TotalSentRows = r.FailedRows + r.SuccessfulRows
-	r.SizePerSecond = (float64(r.TotalSentBytes) / (2 << 19)) / (float64(r.TotalSentTime) / 1000)
-	r.RowPerSecond = float64(r.TotalSentRows) / float64(r.TotalSentTime)
+
 	wg.Done()
 }
 
@@ -99,7 +99,7 @@ func (r *Report) Print() {
 func PrintSummary4Topics(ptrReports *map[string]*Report, wg *sync.WaitGroup) {
 	wg.Wait()
 	reports := *ptrReports
-	for _, report := range reports{
+	for _, report := range reports {
 		report.Print()
 	}
 }
