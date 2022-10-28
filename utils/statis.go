@@ -84,14 +84,14 @@ func (r *Report) Print() {
 	fmt.Printf("Threads: %d \n", r.ThreadsNum)
 	fmt.Printf("SpentTime: %.3f s\n", float64(r.TotalSentTime/1000))
 
-	fmt.Printf("TotalRows: %d \n", r.TotalSentRows)
-	fmt.Printf("FailedRows: %d \n", r.FailedRows)
-	fmt.Printf("SuccessfulRows: %d \n", r.SuccessfulRows)
-	fmt.Printf("RowsPerSeconds: %.3f \n", r.RowPerSecond)
-	fmt.Printf("RowsPerReqeust: %d \n", r.MessageSize)
+	fmt.Printf("Transmit Rows: %d (Total transmit rows)\n", r.TotalSentRows)
+	fmt.Printf("Transmit MiB: %.3f M \n", float64(r.TotalSentBytes/(2<<19)))
+	fmt.Printf("Transmit Failed Rows: %d \n", r.FailedRows)
+	fmt.Printf("Transmit Successful Rows: %d \n", r.SuccessfulRows)
+	fmt.Printf("Transmission Rate1: %.3f M/s (MiB per seconds)\n", r.SizePerSecond)
+	fmt.Printf("Transmission Rate2: %.3f R/s (Rows per seconds)\n", r.RowPerSecond)
+	fmt.Printf("Packet Message Size: %d R/P (Rows per packet message)\n", r.MessageSize)
 
-	fmt.Printf("SentSize: %.3f M \n", float64(r.TotalSentBytes/(2<<19)))
-	fmt.Printf("MBPerSeonds: %.3f \n", r.SizePerSecond)
 	fmt.Printf("ElapsedTime: %.3f s \n", r.EndTime.Sub(r.StartTime).Seconds())
 	fmt.Printf("StopTime: %v \n", r.EndTime)
 }
