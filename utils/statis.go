@@ -95,3 +95,11 @@ func (r *Report) Print() {
 	fmt.Printf("ElapsedTime: %.3f s \n", r.EndTime.Sub(r.StartTime).Seconds())
 	fmt.Printf("StopTime: %v \n", r.EndTime)
 }
+
+func PrintSummary4Topics(ptrReports *map[string]*Report, wg *sync.WaitGroup) {
+	wg.Wait()
+	reports := *ptrReports
+	for _, report := range reports{
+		report.Print()
+	}
+}

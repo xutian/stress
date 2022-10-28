@@ -4,11 +4,38 @@ import (
 	"bytes"
 	//"context"
 	"sync"
+	"time"
 
 	"github.com/panjf2000/ants"
 	log "github.com/sirupsen/logrus"
 	//"golang.org/x/time/rate"
 )
+
+func Consumer4Topics(conf *Config, ptrChanStatis *chan *Statistician, ptrMapChanPipes *map[string]*chan *bytes.Buffer, ptrMapReports *map[string]*Report, poolSize int) {
+	var wg sync.WaitGroup
+
+	topicNum := len(conf.Topics)
+	mapChanPipes := *ptrMapChanPipes
+	mapReports := *ptrMapReports
+	chanStatis := *ptrChanStatis
+
+	wg.Add(topicNum)
+	for _, topic := range conf.Topics {
+		go func(topic string) {
+			var pipe = mapChanPipes[topic]
+			DataConsumer(conf, topic, ptrChanStatis, pipe, poolSize)
+			mapReports[topic].EndTime = time.Now()
+			wg.Done()
+			log.Debugf("Test done for topic %s!", topic)
+		}(topic)
+	}
+	//Wait Consumer goroutine for all topic done
+	wg.Wait()
+	log.Debugln("Test done for all topics")
+	//Close statis channel to finish Calc goroutine,
+	//If not close the goroutine main goroutine blocked
+	close(chanStatis)
+}
 
 func DataProducer(conf *Config, mp *map[string]*chan *bytes.Buffer, poolSize int) {
 	//// create task pool to generate data and sent data to channel

@@ -61,8 +61,6 @@ func parserOpts() {
 }
 
 func main() {
-
-	var wg sync.WaitGroup
 	var wgReport sync.WaitGroup
 
 	//// Code for anysiszied CPU usage
@@ -106,25 +104,7 @@ func main() {
 
 	go utils.DataProducer(conf, &chanPipes, producerPoolSize)
 	// collect statis records, calculate and print summary
-	wg.Add(topicNum)
-	for _, topic := range conf.Topics {
-		go func(topic string) {
-			var pipe = chanPipes[topic]
-			utils.DataConsumer(conf, topic, &chanStatis, pipe, consumerPoolSize)
-			reports[topic].EndTime = time.Now()
-			wg.Done()
-			log.Debugf("Test done for topic %s!", topic)
-		}(topic)
-	}
-	//Wait Consumer goroutine for all topic done
-	wg.Wait()
-	log.Debugln("Test done for all topics")
-	//Close statis channel to finish Calc goroutine,
-	//If not close the goroutine main goroutine blocked
-	close(chanStatis)
-	wgReport.Wait()
-	for _, v := range reports {
-		v.Print()
-	}
+	utils.Consumer4Topics(conf, &chanStatis, &chanPipes, &reports, consumerPoolSize)
+	utils.PrintSummary4Topics(&reports, &wgReport)
 
 }
