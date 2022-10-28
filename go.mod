@@ -3,11 +3,11 @@ module mpp-stress
 go 1.19
 
 require (
-	github.com/bxcodec/faker/v4 v4.0.0-beta.3
+	github.com/elodina/go-avro v0.0.0-20160406082632-0c8185d9a3ba
 	github.com/panjf2000/ants v1.3.0
 	github.com/segmentio/kafka-go v0.4.35
 	github.com/sirupsen/logrus v1.9.0
-	gopkg.in/avro.v0 v0.0.0-20171217001914-a730b5802183
+	golang.org/x/time v0.1.0
 )
 
 require (

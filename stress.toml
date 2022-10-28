@@ -2,15 +2,15 @@
 eip="127.0.0.1"
 brokerips=["127.0.0.1:9094"]
 schemaname=1 # default=1
-topics=["mpp_topic1","mpp_topic2"]
+topics=["mpp_topic1"]#, "mpp_topic2"]
 threadsnum=8 # 线程数
 recordnum=3400 # 每条消息行数
-sndnum=96 # 总消息数
+sndnum=1000 # 总消息数
 runtostop=0 # 总运行时长：单位min
 
 [optional]
-flow=false # 是否流量控制,开启后,同时设置令牌间隔时间
-flowinterval=0 # 令牌间隔时间:单位ms (计算公式：flowinterval=1000*每条消息大小(1M/s 20M/s)*topic数量/目标流量(200M/s))
+flow=true # 是否流量控制,开启后,同时设置令牌间隔时间
+flowinterval=3 
 
 [test]
 usemethod=1 # 默认为1,通过dataproxy发送数据;2为通过kafka发送数据 
