@@ -29,12 +29,13 @@ func Consumer4Topics(conf *Config, ptrChanStatis *chan *Statistician, ptrMapChan
 			log.Debugf("Test done for topic %s!", topic)
 		}(topic)
 	}
-	//Wait Consumer goroutine for all topic done
 	wg.Wait()
+	//Wait Consumer goroutine for all topic done
 	log.Debugln("Test done for all topics")
 	//Close statis channel to finish Calc goroutine,
 	//If not close the goroutine main goroutine blocked
 	close(chanStatis)
+
 }
 
 func DataProducer(conf *Config, mp *map[string]*chan *bytes.Buffer, poolSize int) {

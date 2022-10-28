@@ -7,7 +7,6 @@ import (
 	"io"
 	"mpp-stress/utils"
 	"os"
-	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -61,8 +60,6 @@ func parserOpts() {
 }
 
 func main() {
-	var wgReport sync.WaitGroup
-
 	//// Code for anysiszied CPU usage
 	// fd, err := os.Create("cpu.prof")
 
@@ -77,7 +74,6 @@ func main() {
 	// defer pprof.StopCPUProfile()
 
 	log.Println(fmt.Sprintf("PoolSize: %v", conf.Threads))
-	topicNum := len(conf.Topics)
 	consumerPoolSize := conf.Threads
 	producerPoolSize := consumerPoolSize * 2
 	capStatisChan := conf.Threads
@@ -91,20 +87,19 @@ func main() {
 	//map to keep channel ptr for each topic
 	chanPipes := make(map[string]*chan *bytes.Buffer)
 
-	wgReport.Add(topicNum)
 	for _, topic := range conf.Topics {
 		pipe := make(chan *bytes.Buffer, producerPoolSize+1)
 		chanPipes[topic] = &pipe
 		report := utils.NewReport(topic, conf, &chanStatis)
 		reports[topic] = report
-		//Start go routine to consume elements in channel chanStatis
-		//to avoid process blocked after chanStatis is full
-		go utils.Calc(&reports, &chanStatis, &wgReport)
 	}
+	//Start go routine to consume elements in channel chanStatis
+	//to avoid process blocked after chanStatis is full
+	go utils.Calc(&reports, &chanStatis)
 
 	go utils.DataProducer(conf, &chanPipes, producerPoolSize)
 	// collect statis records, calculate and print summary
 	utils.Consumer4Topics(conf, &chanStatis, &chanPipes, &reports, consumerPoolSize)
-	utils.PrintSummary4Topics(&reports, &wgReport)
+	utils.PrintSummary4Topics(&reports)
 
 }

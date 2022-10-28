@@ -3,7 +3,6 @@ package utils
 import (
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -60,7 +59,7 @@ func NewReport(name string, conf *Config, chanStatis *chan *Statistician) *Repor
 	}
 }
 
-func Calc(ptrMapReport *map[string]*Report, ptrChanStatis *chan *Statistician, wg *sync.WaitGroup) {
+func Calc(ptrMapReport *map[string]*Report, ptrChanStatis *chan *Statistician) {
 	chanStatis := *ptrChanStatis
 	mapReports := *ptrMapReport
 	for data := range chanStatis {
@@ -79,8 +78,6 @@ func Calc(ptrMapReport *map[string]*Report, ptrChanStatis *chan *Statistician, w
 		report.SizePerSecond = sentMib / spentSeconds
 		report.RowPerSecond = float64(report.TotalSentRows) / spentSeconds
 	}
-
-	wg.Done()
 }
 
 func (r *Report) Print() {
@@ -106,8 +103,7 @@ func (r *Report) Print() {
 
 }
 
-func PrintSummary4Topics(ptrReports *map[string]*Report, wg *sync.WaitGroup) {
-	wg.Wait()
+func PrintSummary4Topics(ptrReports *map[string]*Report) {
 	reports := *ptrReports
 	for _, report := range reports {
 		report.Print()
