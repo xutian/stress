@@ -17,7 +17,7 @@ type Config struct {
 	MethodId         int
 	Eip              string
 	MessageNum       int
-	Rond2Stop        float64
+	RunTimeout       float64
 	DpUser           string
 	DpPasswd         string
 }
@@ -35,7 +35,7 @@ func NewConfByFile(path string) *Config {
 		MessageSize:      msgSize,
 		Threads:          viper.GetInt("required.threadsnum"),
 		MessageNum:       msgNum, // FileNum
-		Rond2Stop:        viper.GetFloat64("required.runtostop"),
+		RunTimeout:        viper.GetFloat64("required.runtostop"),
 		FlowCtrl:         viper.GetBool("optional.flow"),
 		Interval:         viper.GetInt("optional.flowinterval"),
 		SchemaId:         viper.GetInt("required.schemaname"),
@@ -54,7 +54,7 @@ func (c *Config) Validate() {
 	if len(c.Topics) == 0 || c.SchemaId <= 0 {
 		log.Fatalln("缺少必填项：topic or schema,请修改config")
 	}
-	if c.Rond2Stop > 0 && c.MessageNum > 0 {
+	if c.RunTimeout > 0 && c.MessageNum > 0 {
 		log.Fatalln("总时长和总发送数量sndnum不能同时大于0,请修改config")
 	}
 	if c.FlowCtrl && c.Interval <= 0 {
