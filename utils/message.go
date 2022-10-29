@@ -395,13 +395,17 @@ func PackMessage(bucketSize int) *bytes.Buffer {
 
 func PushMessage(ptrMap *map[string]*chan *bytes.Buffer, bufSize int) {
 	pipMap := *ptrMap
-	msg := PackMessage(bufSize)
-	msgSize := len(msg.Bytes())
+	buffer := PackMessage(bufSize)
+	msg := buffer.Bytes()
+	msgSize := len(msg)
 	for topic, ptrPipe := range pipMap {
+		newBuffer := &bytes.Buffer{}
+		newBuffer.Write(msg)
 		pipe := *ptrPipe
-		pipe <- msg
+		pipe <- newBuffer
 		log.Debugf("Generate data %v (bytes) data for topic %s", msgSize, topic)
 	}
+	buffer.Reset()
 }
 
 func sentByCli(b *bytes.Buffer, h interface{}, chanOut *chan *Statistician) {
