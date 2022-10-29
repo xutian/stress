@@ -35,7 +35,7 @@ func NewConfByFile(path string) *Config {
 		MessageSize:      msgSize,
 		Threads:          viper.GetInt("required.threadsnum"),
 		MessageNum:       msgNum, // FileNum
-		RunTimeout:        viper.GetFloat64("required.runtostop"),
+		RunTimeout:       viper.GetFloat64("required.runtostop"),
 		FlowCtrl:         viper.GetBool("optional.flow"),
 		Interval:         viper.GetInt("optional.flowinterval"),
 		SchemaId:         viper.GetInt("required.schemaname"),
@@ -51,21 +51,10 @@ func NewConfByFile(path string) *Config {
 
 func (c *Config) Validate() {
 
-	if len(c.Topics) == 0 || c.SchemaId <= 0 {
-		log.Fatalln("缺少必填项：topic or schema,请修改config")
+	if len(c.Topics) < 1 {
+		log.Fatalln("缺少必填项：topic, 请修改config")
 	}
 	if c.RunTimeout > 0 && c.MessageNum > 0 {
 		log.Fatalln("总时长和总发送数量sndnum不能同时大于0,请修改config")
-	}
-	if c.FlowCtrl && c.Interval <= 0 {
-		log.Fatalln("流量控制时长flowinterval必须大于0,请修改config")
-	}
-	if c.MessageNum > 0 {
-		if c.Threads > c.MessageNum {
-			c.Threads = c.MessageNum
-		}
-		if c.MessageNum%c.Threads != 0 {
-			log.Fatalln("本版本仅支持sndnum是threadsnum的倍数,请修改config")
-		}
 	}
 }

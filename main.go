@@ -87,19 +87,29 @@ func main() {
 	//map to keep channel ptr for each topic
 	chanPipes := make(map[string]*chan *bytes.Buffer)
 
+	//make a channel to send timeout signal
+	consumerCtlMap := make(map[string]*<-chan time.Time)
+	timeout := conf.RunTimeout * float64(time.Minute)
+	produceCtl := time.After(time.Duration(timeout))
+	if conf.RunTimeout > 0 {
+		log.Infof("Process will exit after %v Minute", conf.RunTimeout)
+	}
+
 	for _, topic := range conf.Topics {
+		ctlChan := time.After(time.Duration(timeout))
 		pipe := make(chan *bytes.Buffer, producerPoolSize+1)
 		chanPipes[topic] = &pipe
 		report := utils.NewReport(topic, conf, &chanStatis)
 		reports[topic] = report
+		consumerCtlMap[topic] = &ctlChan
 	}
 	//Start go routine to consume elements in channel chanStatis
 	//to avoid process blocked after chanStatis is full
 	go utils.Calc(&reports, &chanStatis)
 
-	go utils.DataProducer(conf, &chanPipes, producerPoolSize)
+	go utils.DataProducer(conf, &chanPipes, &produceCtl, producerPoolSize)
 	// collect statis records, calculate and print summary
-	utils.Consumer4Topics(conf, &chanStatis, &chanPipes, &reports, consumerPoolSize)
+	utils.Consumer4Topics(conf, &chanStatis, &chanPipes, &reports, &consumerCtlMap, consumerPoolSize)
 	utils.PrintSummary4Topics(&reports)
 
 }

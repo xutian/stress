@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bytes"
+	//"runtime"
 	//"context"
 	"sync"
 	"time"
@@ -11,7 +12,7 @@ import (
 	//"golang.org/x/time/rate"
 )
 
-func Consumer4Topics(conf *Config, ptrChanStatis *chan *Statistician, ptrMapChanPipes *map[string]*chan *bytes.Buffer, ptrMapReports *map[string]*Report, ptrCtlChans *map[string]*chan bool, poolSize int) {
+func Consumer4Topics(conf *Config, ptrChanStatis *chan *Statistician, ptrMapChanPipes *map[string]*chan *bytes.Buffer, ptrMapReports *map[string]*Report, ptrCtlChans *map[string]*<-chan time.Time, poolSize int) {
 	var wg sync.WaitGroup
 
 	topicNum := len(conf.Topics)
@@ -40,7 +41,7 @@ func Consumer4Topics(conf *Config, ptrChanStatis *chan *Statistician, ptrMapChan
 
 }
 
-func DataProducer(conf *Config, mpPipe *map[string]*chan *bytes.Buffer, ptrCtlChan *chan bool, poolSize int) {
+func DataProducer(conf *Config, mpPipe *map[string]*chan *bytes.Buffer, ptrCtlChan *<-chan time.Time, poolSize int) {
 	//// create task pool to generate data and sent data to channel
 	var wg sync.WaitGroup
 	pool, err := ants.NewPoolWithFunc(
@@ -58,23 +59,30 @@ func DataProducer(conf *Config, mpPipe *map[string]*chan *bytes.Buffer, ptrCtlCh
 	}
 	defer pool.Release()
 	log.Debugln("Begin to product data...")
-	for {
-		if conf.RunTimeout > 0 {
-			done := <-*ptrCtlChan
-			if done {
-				close(*ptrCtlChan)
-				break
-			}
-			wg.Add(1)
-			pool.Invoke(1)
-
-		} else {
-			for i := 0; i < conf.MessageNum; i++ {
+	ctlChan := *ptrCtlChan
+	if conf.RunTimeout > 0 {
+		for {
+			select {
+			case <-ctlChan:
+				log.Println("Get done signal, stop!")
+				goto ForEnd
+				// for _, topic := range conf.Topics {
+				// 	pipe := (*mpPipe)[topic]
+				// 	close(*pipe)
+				// }
+				// runtime.Goexit()
+			default:
 				wg.Add(1)
 				pool.Invoke(1)
 			}
 		}
+	} else {
+		for i := 0; i < conf.MessageNum; i++ {
+			wg.Add(1)
+			pool.Invoke(1)
+		}
 	}
+ForEnd:
 	wg.Wait()
 	for _, topic := range conf.Topics {
 		ch := (*mpPipe)[topic]
@@ -83,14 +91,9 @@ func DataProducer(conf *Config, mpPipe *map[string]*chan *bytes.Buffer, ptrCtlCh
 	log.Debugln("Put data to channel done!")
 }
 
-func DataConsumer(conf *Config, topic string, out *chan *Statistician, pipe *chan *bytes.Buffer, ptrCtlChan *chan bool, poolSize int) {
+func DataConsumer(conf *Config, topic string, out *chan *Statistician, pipe *chan *bytes.Buffer, ptrCtlChan *<-chan time.Time, poolSize int) {
 
 	var wg sync.WaitGroup
-
-	//limiter := rate.NewLimiter(rate.Limit(conf.Interval), 1)
-	//ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
-	//defer cancel()
-
 	// New pool for send data
 	pool, o_err := ants.NewPoolWithFunc(
 		poolSize,
@@ -111,25 +114,30 @@ func DataConsumer(conf *Config, topic string, out *chan *Statistician, pipe *cha
 	defer pool.Release()
 
 	log.Debugln("Begin to consum data...")
-
-	for {
-		if conf.RunTimeout > 0 {
-			done := <-*ptrCtlChan
-			if done {
-				close(*ptrCtlChan)
-				break
-			}
-			wg.Add(1)
-			pool.Invoke(1)
-
-		} else {
-			for i := 0; i < conf.MessageNum; i++ {
+	ctlChan := *ptrCtlChan
+	if conf.RunTimeout > 0 {
+		for {
+			select {
+			case <-ctlChan:
+				log.Println("Get done signal, stop!")
+				goto ForEnd
+				// for _, topic := range conf.Topics {
+				// 	pipe := (*mpPipe)[topic]
+				// 	close(*pipe)
+				// }
+				// runtime.Goexit()
+			default:
 				wg.Add(1)
 				pool.Invoke(1)
 			}
 		}
+	} else {
+		for i := 0; i < conf.MessageNum; i++ {
+			wg.Add(1)
+			pool.Invoke(1)
+		}
 	}
-
+ForEnd:
 	wg.Wait()
 	log.Debugln("Sent data Done!")
 }
