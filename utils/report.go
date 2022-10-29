@@ -82,21 +82,23 @@ func Calc(ptrMapReport *map[string]*Report, ptrChanStatis *chan *Statistician) {
 		}
 		report.TotalRequestsSent = report.FailedRequests + report.SussfulRequests
 		report.TotalSentRows = report.FailedRows + report.SuccessfulRows
-		sentMib := float64(report.TotalSentBytes / (2 << 19))
+		sentMiB := float64(report.TotalSentBytes / (2 << 19))
 		spentSeconds := float64(report.TotalSentTime/1000) + 0.001
-		report.SizePerSecond = sentMib / spentSeconds
+		report.SizePerSecond = sentMiB / spentSeconds
 		report.RowPerSecond = float64(report.TotalSentRows) / spentSeconds
 	}
 }
 
 func (r *Report) Print() {
 	var tableContent [16]string
+	spentSeconds := float64(r.TotalSentTime/1000) + 0.001
+	totalSentMiB := float64(r.TotalSentBytes / (2 << 19))
 	tableContent[0] = fmt.Sprintf("==============Summary for Topic %s======================", r.Name)
 	tableContent[1] = fmt.Sprintf("Start At: %v", r.StartTime)
 	tableContent[2] = fmt.Sprintf("Threads: %d", r.ThreadsNum)
-	tableContent[3] = fmt.Sprintf("SpentTime: %.3fs", float64(r.TotalSentTime/1000)+0.001)
+	tableContent[3] = fmt.Sprintf("SpentTime: %.3fs, (%v Milliseconds)", spentSeconds, r.TotalSentTime)
 	tableContent[4] = fmt.Sprintf("Transmit Rows: %d (Total transmit rows)", r.TotalSentRows)
-	tableContent[5] = fmt.Sprintf("Transmit MiB: %.3f M", float64(r.TotalSentBytes/(2<<19)))
+	tableContent[5] = fmt.Sprintf("Transmit MiB: %.3f MiB (%v bytes)", totalSentMiB, r.TotalSentBytes)
 	tableContent[6] = fmt.Sprintf("Transmit Failed Rows: %d", r.FailedRows)
 	tableContent[7] = fmt.Sprintf("Transmit Successful Rows: %d", r.SuccessfulRows)
 	tableContent[8] = fmt.Sprintf("Transmission Rate1: %.3f M/s (MiB per seconds)", r.SizePerSecond)
