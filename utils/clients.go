@@ -55,7 +55,7 @@ func (h *HttpHandler) Do(data *bytes.Buffer, chanOut *chan *Statistician) error 
 		return s_err
 	}
 	statis.SentTime = time.Since(startTime).Milliseconds()
-
+	msgBytes := int64(len(data.Bytes()))
 	h.Cli.CloseIdleConnections()
 	defer response.Body.Close()
 	content, err := ioutil.ReadAll(response.Body)
@@ -67,7 +67,7 @@ func (h *HttpHandler) Do(data *bytes.Buffer, chanOut *chan *Statistician) error 
 		log.Errorf("Response code: %v, %s", response.StatusCode, string(content))
 	} else {
 		statis.State = true
-		statis.SentBytes = int64(len(data.Bytes()))
+		statis.SentBytes = msgBytes
 		log.Debugf("Response code: %v, %s", response.StatusCode, string(content))
 	}
 	*chanOut <- statis
