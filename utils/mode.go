@@ -47,10 +47,7 @@ func DataProducer(conf *Config, mpPipe *map[string]*chan *bytes.Buffer, ptrCtlCh
 	pool, err := ants.NewPoolWithFunc(
 		poolSize,
 		func(i interface{}) {
-			for _, topic := range conf.Topics {
-				pipe := (*mpPipe)[topic]
-				PushMessage(pipe, conf.MessageSize)
-			}
+			PushMessage(mpPipe, conf.MessageSize)
 			wg.Done()
 		})
 
