@@ -23,10 +23,6 @@ type HttpHandler struct {
 	Conf  *Config
 }
 
-func Init() {
-	log.SetLevel(log.TraceLevel)
-}
-
 func NewHttpHandler(topic string, conf *Config) *HttpHandler {
 	return &HttpHandler{
 		Topic: topic,
