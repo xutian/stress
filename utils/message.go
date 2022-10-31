@@ -293,7 +293,7 @@ func RandIPv4() int64 {
 }
 
 func RandIPv6() []byte {
-	ip := make([]byte, 8)
+	ip := make([]byte, 16)
 	out := rand.New(rand.NewSource(time.Now().UnixNano())).Uint64()
 	binary.BigEndian.PutUint64(ip, out)
 	return ip
