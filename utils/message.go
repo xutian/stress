@@ -3,8 +3,12 @@ package utils
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/csv"
 	"encoding/hex"
+	"fmt"
 	"math/rand"
+	"reflect"
+	"strconv"
 	"time"
 
 	"github.com/elodina/go-avro"
@@ -275,14 +279,6 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
-func GetSchemaWriter(writer *avro.SpecificDatumWriter) {
-	schema, err := avro.ParseSchema(DataSchema)
-	if err != nil {
-		log.Fatal(err)
-	}
-	writer.SetSchema(schema)
-}
-
 func RandStr(n int) string {
 	//rand.Seed(time.Now().UnixNano())
 	buf := make([]byte, n)
@@ -327,7 +323,7 @@ func NewDataRow() *DataRow {
 	i := RandInt32(1024)
 	if i%2 == 0 {
 		c_netnum = i
-	}else{
+	} else {
 		s_tunnel_port = i
 	}
 	buf := &DataRow{
@@ -382,11 +378,10 @@ func NewDataRow() *DataRow {
 		C_d_mark4:           RandInt64(65536),
 		C_d_mark5:           RandInt64(65536),
 	}
-	//faker.FakeData(&buf)
 	return buf
 }
 
-func WriteRow(bucketSize int) *bytes.Buffer {
+func Write2Avro(bucketSize int) *bytes.Buffer {
 	buffer := &bytes.Buffer{}
 	schema := avro.MustParseSchema(DataSchema)
 	enc := avro.NewBinaryEncoder(buffer)
@@ -401,10 +396,58 @@ func WriteRow(bucketSize int) *bytes.Buffer {
 	return buffer
 }
 
-func PushMessage(ptrMap *map[string]*chan *bytes.Buffer, bufSize int) {
+func Write2Csv(bucketSize int) *bytes.Buffer {
+	buffer := &bytes.Buffer{}
+	writer := csv.NewWriter(buffer)
+	var records [][]string
+	for i := 0; i < bucketSize; i++ {
+		in := NewDataRow()
+		val := reflect.Indirect(reflect.ValueOf(in))
+		var line []string
+		for j := 0; j < val.NumField(); j++ {
+			kind := val.Field(j).Kind()
+			switch kind {
+			case reflect.Int32, reflect.Int64:
+				v := fmt.Sprintf("%v", val.Field(j))
+				line = append(line, v)
+			case reflect.String:
+				line = append(line, val.Field(j).Interface().(string))
+			case reflect.Interface:
+				v := RandInt32(1024) % 256
+				if v == 0 {
+					line = append(line, "")
+				} else {
+					vv := strconv.Itoa(int(v))
+					line = append(line, vv)
+				}
+			case reflect.Slice:
+				v := val.Field(j).Interface().([]byte)
+				line = append(line, string(v))
+			default:
+				line = append(line, "")
+			}
+
+		}
+		records = append(records, line)
+	}
+	writer.WriteAll(records)
+	return buffer
+}
+
+func PushMessage(conf *Config, ptrMap *map[string]*chan *bytes.Buffer) {
 	pipMap := *ptrMap
-	buffer := WriteRow(bufSize)
-	msg := buffer.Bytes()
+	var msg []byte
+	bufSize := conf.MessageSize
+	if conf.Datafmt == "avro" {
+		buffer := Write2Avro(bufSize)
+		msg = buffer.Bytes()
+		buffer.Reset()
+	} else {
+		buffer := Write2Csv(bufSize)
+		msg = buffer.Bytes()
+		buffer.Reset()
+	}
+
 	msgSize := len(msg)
 	for topic, ptrPipe := range pipMap {
 		newBuffer := bytes.NewBuffer(msg)
@@ -413,25 +456,25 @@ func PushMessage(ptrMap *map[string]*chan *bytes.Buffer, bufSize int) {
 		pipe <- newBuffer
 		log.Debugf("Generate data %v (bytes) data for topic %s", msgSize, topic)
 	}
-	buffer.Reset()
+
 }
 
-func sentByCli(b *bytes.Buffer, h interface{}, chanOut *chan *Statistician) {
+func sentByCli(conf *Config, buf *bytes.Buffer, h interface{}, chanOut *chan *Statistician) {
 	switch t := h.(type) {
 	case *HttpHandler:
-		h.(*HttpHandler).Do(b, chanOut)
+		h.(*HttpHandler).Do(conf, buf, chanOut)
 	case *KafkaHandler:
-		h.(*KafkaHandler).Do(b, chanOut)
+		h.(*KafkaHandler).Do(conf, buf, chanOut)
 	default:
 		log.Fatalf("Unknow handler type %T", t)
 	}
-	b.Reset()
+	buf.Reset()
 }
 
-func SendMessage(ptrPipe *chan *bytes.Buffer, h interface{}, chanOut *chan *Statistician) {
+func SendMessage(conf *Config, ptrPipe *chan *bytes.Buffer, h interface{}, chanOut *chan *Statistician) {
 	buf, ok := <-*ptrPipe
 	if ok {
-		sentByCli(buf, h, chanOut)
+		sentByCli(conf, buf, h, chanOut)
 		buf.Reset()
 	}
 }

@@ -1,12 +1,13 @@
 [required]
 eip="127.0.0.1"
-brokerips=["127.0.0.1:9094"]
+brokerips=["127.0.0.1:9094","127.0.0.2:9094"]
 schemaname=1 # default=1
-topics=["mpp_topic1"]#, "mpp_topic2"]
-threadsnum=8 # 线程数
-recordnum=3400 # 每条消息行数
-sndnum=1000 # 总消息数
-runtostop=0 # 总运行时长：单位min
+topics=["test_1", "test_2", "test_3", "test_4"]
+threadsnum=1 # 线程数
+recordnum=32 # 每条消息行数
+sndnum=1
+runtostop=0
+datafmt="csv"
 
 [optional]
 flow=true # 是否流量控制,开启后,同时设置令牌间隔时间

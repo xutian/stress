@@ -20,6 +20,7 @@ type Config struct {
 	RunTimeout       float64
 	DpUser           string
 	DpPasswd         string
+	Datafmt          string
 }
 
 func NewConfByFile(path string) *Config {
@@ -45,6 +46,7 @@ func NewConfByFile(path string) *Config {
 		TotalMessageSize: msgNum * msgSize,
 		DpUser:           viper.GetString("dpconf.user"),
 		DpPasswd:         viper.GetString("dpconf.pwd"),
+		Datafmt:          viper.GetString("required.datafmt"),
 	}
 	return config
 }
@@ -56,5 +58,11 @@ func (c *Config) Validate() {
 	}
 	if c.RunTimeout > 0 && c.MessageNum > 0 {
 		log.Fatalln("总时长和总发送数量sndnum不能同时大于0,请修改config")
+	}
+	switch c.Datafmt {
+		case "avro":
+		case "csv":
+		default:
+		   log.Fatalf("不支持的数据格式%v, 请选择csv或avro", c.Datafmt)
 	}
 }

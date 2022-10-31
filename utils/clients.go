@@ -32,7 +32,7 @@ func NewHttpHandler(topic string, conf *Config) *HttpHandler {
 	}
 }
 
-func (h *HttpHandler) Do(data *bytes.Buffer, chanOut *chan *Statistician) error {
+func (h *HttpHandler) Do(conf *Config, data *bytes.Buffer, chanOut *chan *Statistician) error {
 
 	reader := bytes.NewReader(data.Bytes())
 	request, p_err := http.NewRequest("POST", h.Url, reader)
@@ -42,11 +42,18 @@ func (h *HttpHandler) Do(data *bytes.Buffer, chanOut *chan *Statistician) error 
 	}
 	statis := NewStatistician(h.Topic)
 	defer request.Body.Close()
-	request.Header.Add("Context-Type", "avro")
+	if conf.Datafmt == "avro" {
+		request.Header.Add("Context-Type", "avro")
+		request.Header.Add("Content-Type", "application/avro")
+	} else {
+		request.Header.Add("Context-Type", "csv")
+		request.Header.Add("Content-Type", "text/csv")
+	}
+
 	request.Header.Add("Connection", "keep-alive")
 	request.Header.Add("User", h.Conf.DpUser)
 	request.Header.Add("Password", h.Conf.DpPasswd)
-	request.Header.Add("Content-Type", "application/avro")
+
 	request.Header.Add("Transfer-Encoding", "chunked")
 	startTime := time.Now()
 	response, s_err := h.Cli.Do(request)
@@ -100,7 +107,7 @@ func NewKafkaHandler(topic string, conf *Config) *KafkaHandler {
 	return &handler
 }
 
-func (k *KafkaHandler) Do(data *bytes.Buffer, chanOut *chan *Statistician) {
+func (k *KafkaHandler) Do(conf *Config, data *bytes.Buffer, chanOut *chan *Statistician) {
 	defer k.Close()
 	dataBytes := data.Bytes()
 	msg := kafka.Message{

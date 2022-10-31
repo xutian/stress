@@ -47,7 +47,7 @@ func DataProducer(conf *Config, mpPipe *map[string]*chan *bytes.Buffer, ptrCtlCh
 	pool, err := ants.NewPoolWithFunc(
 		poolSize,
 		func(i interface{}) {
-			PushMessage(mpPipe, conf.MessageSize)
+			PushMessage(conf, mpPipe)
 			wg.Done()
 		})
 
@@ -97,10 +97,10 @@ func DataConsumer(conf *Config, topic string, out *chan *Statistician, pipe *cha
 		func(i interface{}) {
 			if conf.MethodId == 1 {
 				handler := NewHttpHandler(topic, conf)
-				SendMessage(pipe, handler, out)
+				SendMessage(conf, pipe, handler, out)
 			} else {
 				handler := NewKafkaHandler(topic, conf)
-				SendMessage(pipe, handler, out)
+				SendMessage(conf, pipe, handler, out)
 			}
 			wg.Done()
 		})
