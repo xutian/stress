@@ -101,7 +101,6 @@ func DataConsumer(conf *Config, topic string, out *chan *Statistician, pipe *cha
 			} else {
 				handler := NewKafkaHandler(topic, conf)
 				SendMessage(pipe, handler, out)
-				handler.Close()
 			}
 			wg.Done()
 		})

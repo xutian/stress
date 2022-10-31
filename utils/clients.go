@@ -101,6 +101,7 @@ func NewKafkaHandler(topic string, conf *Config) *KafkaHandler {
 }
 
 func (k *KafkaHandler) Do(data *bytes.Buffer, chanOut *chan *Statistician) {
+	defer k.Close()
 	dataBytes := data.Bytes()
 	msg := kafka.Message{
 		Key:   []byte("1"),
