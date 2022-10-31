@@ -327,6 +327,7 @@ func NewDataRow() *DataRow {
 	i := RandInt32(1024)
 	if i%2 == 0 {
 		c_netnum = i
+	}else{
 		s_tunnel_port = i
 	}
 	buf := &DataRow{
