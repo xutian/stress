@@ -378,7 +378,7 @@ func NewDataRow() *DataRow {
 	return buf
 }
 
-func PackMessage(bucketSize int) *bytes.Buffer {
+func WriteRow(bucketSize int) *bytes.Buffer {
 	buffer := &bytes.Buffer{}
 	schema := avro.MustParseSchema(DataSchema)
 	enc := avro.NewBinaryEncoder(buffer)
@@ -395,12 +395,12 @@ func PackMessage(bucketSize int) *bytes.Buffer {
 
 func PushMessage(ptrMap *map[string]*chan *bytes.Buffer, bufSize int) {
 	pipMap := *ptrMap
-	buffer := PackMessage(bufSize)
+	buffer := WriteRow(bufSize)
 	msg := buffer.Bytes()
 	msgSize := len(msg)
 	for topic, ptrPipe := range pipMap {
-		newBuffer := &bytes.Buffer{}
-		newBuffer.Write(msg)
+		newBuffer := bytes.NewBuffer(msg)
+		//newBuffer.Write(msg)
 		pipe := *ptrPipe
 		pipe <- newBuffer
 		log.Debugf("Generate data %v (bytes) data for topic %s", msgSize, topic)
