@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/elodina/go-avro"
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/avro.v0"
 )
 
 var DataSchema = `{
@@ -303,7 +303,6 @@ func RandIPv6String() string {
 
 func IPv6ToInt(in string) []byte {
 	out := net.ParseIP(in)
-	//ip := binary.BigEndian.Uint64(out)
 	return out
 }
 
@@ -398,14 +397,23 @@ func NewDataRow() *DataRow {
 func Write2Avro(bucketSize int) *bytes.Buffer {
 	buffer := &bytes.Buffer{}
 	schema := avro.MustParseSchema(DataSchema)
-	enc := avro.NewBinaryEncoder(buffer)
-	writer := avro.NewSpecificDatumWriter()
+	writer := avro.NewGenericDatumWriter()
 	writer.SetSchema(schema)
+	encoder := avro.NewBinaryEncoder(buffer)
+
 	for i := 0; i < bucketSize; i++ {
-		in := NewDataRow()
-		if err := writer.Write(in, enc); err != nil {
-			log.Errorf("Generate avro data with error, %v", err)
+		ptrData := NewDataRow()
+		data := *ptrData
+		record := avro.NewGenericRecord(schema)
+		value := reflect.ValueOf(data)
+		typ := reflect.TypeOf(data)
+		for j := 0; j < value.NumField(); j++ {
+			tag := typ.Field(j).Tag.Get("avro")
+			val := value.Field(j).Interface()
+			record.Set(tag, val)
+			log.Debugf("Set avro field %s: %v", tag, val)
 		}
+		writer.Write(record, encoder)
 	}
 	return buffer
 }
@@ -415,37 +423,39 @@ func Write2Csv(bucketSize int) *bytes.Buffer {
 	writer := csv.NewWriter(buffer)
 	var records [][]string
 	for i := 0; i < bucketSize; i++ {
-		in := NewDataRow()
-		val := reflect.Indirect(reflect.ValueOf(in))
+		ptrData := NewDataRow()
+		data := *ptrData
+		value := reflect.ValueOf(data)
+
 		var line []string
-		for j := 0; j < val.NumField(); j++ {
-			kind := val.Field(j).Kind()
-			name := val.Type().Field(j).Name
-			valIterface := val.Field(j).Interface()
+		for j := 0; j < value.NumField(); j++ {
+			kind := value.Field(j).Kind()
+			name := value.Type().Field(j).Name
+			fieldValue := value.Field(j).Interface()
 			switch kind {
 
 			case reflect.Int32:
-				v := fmt.Sprintf("%v", valIterface.(int32))
+				v := fmt.Sprintf("%v", fieldValue.(int32))
 				line = append(line, v)
 				log.Tracef("%s match int32 item %d, val: %s", name, j, v)
 			case reflect.Int64:
 				// ipv4 addr
 				if strings.HasSuffix(name, "_ip") || strings.HasSuffix(name, "_ipv4") {
-					v := Int2Ipv4(valIterface.(int64))
+					v := Int2Ipv4(fieldValue.(int64))
 					line = append(line, v)
 					log.Tracef("%s match int64-ipv4 item %d, val: %s", name, j, v)
 				} else {
-					v := fmt.Sprintf("%v", valIterface.(int64))
+					v := fmt.Sprintf("%v", fieldValue.(int64))
 					line = append(line, v)
 					log.Tracef("%s match int64 item %d, val: %s", name, j, v)
 				}
 			case reflect.String:
-				v := valIterface.(string)
+				v := fieldValue.(string)
 				line = append(line, v)
 				log.Tracef("%s match string item %d, val: %s", name, j, v)
 			case reflect.Slice:
 				// ipv6 address
-				tmp := val.Field(j).Interface().([]byte)
+				tmp := fieldValue.([]byte)
 				v := Bytes2Ipv6(tmp)
 				line = append(line, v)
 				log.Tracef("%s match slice item %d, val: %s", name, j, v)

@@ -7,10 +7,16 @@ import (
 	"sync"
 )
 
-// Reader is an interface that may be implemented to avoid using runtime reflection during deserialization.
+// ***********************
+// NOTICE this file was changed beginning in November 2016 by the team maintaining
+// https://github.com/go-avro/avro. This notice is required to be here due to the
+// terms of the Apache license, see LICENSE for details.
+// ***********************
+
+// Unmarshaler is an interface that may be implemented to avoid using runtime reflection during deserialization.
 // Implementing it is optional and may be used as an optimization. Falls back to using reflection if not implemented.
-type Reader interface {
-	Read(dec Decoder) error
+type Unmarshaler interface {
+	UnmarshalAvro(dec Decoder) error
 }
 
 // DatumReader is an interface that is responsible for reading structured data according to schema from a decoder
@@ -18,11 +24,11 @@ type DatumReader interface {
 	// Reads a single structured entry using this DatumReader according to provided Schema.
 	// Accepts a value to fill with data and a Decoder to read from. Given value MUST be of pointer type.
 	// May return an error indicating a read failure.
-	Read(interface{}, Decoder) error
+	Read(v interface{}, dec Decoder) error
 
 	// Sets the schema for this DatumReader to know the data structure.
 	// Note that it must be called before calling Read.
-	SetSchema(Schema)
+	SetSchema(schema Schema)
 }
 
 var enumSymbolsToIndexCache = make(map[string]map[string]int32)
@@ -100,8 +106,8 @@ func (reader *SpecificDatumReader) SetSchema(schema Schema) {
 // your struct field as follows: SomeValue int32 `avro:"some_field"`).
 // May return an error indicating a read failure.
 func (reader *SpecificDatumReader) Read(v interface{}, dec Decoder) error {
-	if reader, ok := v.(Reader); ok {
-		return reader.Read(dec)
+	if reader, ok := v.(Unmarshaler); ok {
+		return reader.UnmarshalAvro(dec)
 	}
 
 	rv := reflect.ValueOf(v)
@@ -109,7 +115,7 @@ func (reader *SpecificDatumReader) Read(v interface{}, dec Decoder) error {
 		return errors.New("Not applicable for non-pointer types or nil")
 	}
 	if reader.schema == nil {
-		return SchemaNotSet
+		return ErrSchemaNotSet
 	}
 	return reader.fillRecord(reader.schema, rv, dec)
 }
@@ -241,8 +247,15 @@ func (reader sDatumReader) mapMap(field Schema, reflectField reflect.Value, dec 
 	if err != nil {
 		return reflect.ValueOf(mapLength), err
 	}
-
+	elemType := reflectField.Type().Elem()
+	elemIsPointer := (elemType.Kind() == reflect.Ptr)
 	resultMap := reflect.MakeMap(reflectField.Type())
+
+	// dest is an element type value used as the destination for reading values into.
+	// This is required for using non-primitive types as map values, because map values are not addressable
+	// like array values are. It can be reused because it's scratch space and it's copied into the map.
+	dest := reflect.New(elemType).Elem()
+
 	for {
 		if mapLength == 0 {
 			break
@@ -254,11 +267,11 @@ func (reader sDatumReader) mapMap(field Schema, reflectField reflect.Value, dec 
 			if err != nil {
 				return reflect.ValueOf(mapLength), err
 			}
-			val, err := reader.readValue(field.(*MapSchema).Values, reflectField, dec)
+			val, err := reader.readValue(field.(*MapSchema).Values, dest, dec)
 			if err != nil {
 				return reflect.ValueOf(mapLength), nil
 			}
-			if val.Kind() == reflect.Ptr {
+			if !elemIsPointer && val.Kind() == reflect.Ptr {
 				resultMap.SetMapIndex(key, val.Elem())
 			} else {
 				resultMap.SetMapIndex(key, val)
@@ -388,7 +401,7 @@ func (reader *GenericDatumReader) Read(v interface{}, dec Decoder) error {
 	}
 	rv = rv.Elem()
 	if reader.schema == nil {
-		return SchemaNotSet
+		return ErrSchemaNotSet
 	}
 
 	//read the value
@@ -566,7 +579,7 @@ func (reader *GenericDatumReader) mapUnion(field Schema, dec Decoder) (interface
 		return reader.readValue(union, dec)
 	}
 
-	return nil, UnionTypeOverflow
+	return nil, ErrUnionTypeOverflow
 }
 
 func (reader *GenericDatumReader) mapFixed(field Schema, dec Decoder) ([]byte, error) {
