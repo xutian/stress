@@ -7,8 +7,10 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/rand"
+	"net"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/elodina/go-avro"
@@ -223,56 +225,56 @@ var DataSchema = `{
 }`
 
 type DataRow struct {
-	C_netnum            int32       `avro:"c_netnum"`
-	C_ip                int64       `avro:"c_ip"`
-	C_flowid            string      `avro:"c_flowid"`
-	C_src_ipv4          int64       `avro:"c_src_ipv4"`
-	C_src_ipv6          []byte      `avro:"c_src_ipv6"`
-	C_src_port          int32       `avro:"c_src_port"`
-	C_s_tunnel_ip       int64       `avro:"c_s_tunnel_ip"`
-	C_s_tunnel_port     int32       `avro:"c_s_tunnel_port"`
-	C_dest_ipv4         int64       `avro:"c_dest_ipv4"`
-	C_dest_ipv6         []byte      `avro:"c_dest_ipv6"`
-	C_dest_port         int32       `avro:"c_dest_port"`
-	C_d_tunnel_ip       int64       `avro:"c_d_tunnel_ip"`
-	C_d_tunnel_port     int32       `avro:"c_d_tunnel_port"`
-	C_packet_group      int32       `avro:"c_packet_group"`
-	C_proto_type        int32       `avro:"c_proto_type"`
-	C_connect_status    int32       `avro:"c_connect_status"`
-	C_direct            int32       `avro:"c_direct"`
-	C_server_dir        int32       `avro:"c_server_dir"`
-	C_up_packets        int64       `avro:"c_up_packets"`
-	C_up_bytes          int64       `avro:"c_up_bytes"`
-	C_down_packets      int64       `avro:"c_down_packets"`
-	C_down_bytes        int64       `avro:"c_down_bytes"`
-	C_c2s_packet_jitter int32       `avro:"c_c2s_packet_jitter"`
-	C_s2c_packet_jitter int32       `avro:"c_s2c_packet_jitter"`
-	C_log_time          int64       `avro:"c_log_time"`
-	C_app_type          string      `avro:"c_app_type"`
-	C_stream_time       int64       `avro:"c_stream_time"`
-	C_hostr             string      `avro:"c_hostr"`
-	C_s_boundary        int64       `avro:"c_s_boundary"`
-	C_s_region          int64       `avro:"c_s_region"`
-	C_s_city            int64       `avro:"c_s_city"`
-	C_s_district        int64       `avro:"c_s_district"`
-	C_s_operators       int64       `avro:"c_s_operators"`
-	C_s_owner           string      `avro:"c_s_owner"`
-	C_d_boundary        int64       `avro:"c_d_boundary"`
-	C_d_region          int64       `avro:"c_d_region"`
-	C_d_city            int64       `avro:"c_d_city"`
-	C_d_district        int64       `avro:"c_d_district"`
-	C_d_operators       int64       `avro:"c_d_operators"`
-	C_d_owner           string      `avro:"c_d_owner"`
-	C_s_mark1           int64       `avro:"c_s_mark1"`
-	C_s_mark2           int64       `avro:"c_s_mark2"`
-	C_s_mark3           int64       `avro:"c_s_mark3"`
-	C_s_mark4           int64       `avro:"c_s_mark4"`
-	C_s_mark5           int64       `avro:"c_s_mark5"`
-	C_d_mark1           int64       `avro:"c_d_mark1"`
-	C_d_mark2           int64       `avro:"c_d_mark2"`
-	C_d_mark3           int64       `avro:"c_d_mark3"`
-	C_d_mark4           int64       `avro:"c_d_mark4"`
-	C_d_mark5           int64       `avro:"c_d_mark5"`
+	C_netnum            int32  `avro:"c_netnum"`
+	C_ip                int64  `avro:"c_ip"`
+	C_flowid            string `avro:"c_flowid"`
+	C_src_ipv4          int64  `avro:"c_src_ipv4"`
+	C_src_ipv6          []byte `avro:"c_src_ipv6"`
+	C_src_port          int32  `avro:"c_src_port"`
+	C_s_tunnel_ip       int64  `avro:"c_s_tunnel_ip"`
+	C_s_tunnel_port     int32  `avro:"c_s_tunnel_port"`
+	C_dest_ipv4         int64  `avro:"c_dest_ipv4"`
+	C_dest_ipv6         []byte `avro:"c_dest_ipv6"`
+	C_dest_port         int32  `avro:"c_dest_port"`
+	C_d_tunnel_ip       int64  `avro:"c_d_tunnel_ip"`
+	C_d_tunnel_port     int32  `avro:"c_d_tunnel_port"`
+	C_packet_group      int32  `avro:"c_packet_group"`
+	C_proto_type        int32  `avro:"c_proto_type"`
+	C_connect_status    int32  `avro:"c_connect_status"`
+	C_direct            int32  `avro:"c_direct"`
+	C_server_dir        int32  `avro:"c_server_dir"`
+	C_up_packets        int64  `avro:"c_up_packets"`
+	C_up_bytes          int64  `avro:"c_up_bytes"`
+	C_down_packets      int64  `avro:"c_down_packets"`
+	C_down_bytes        int64  `avro:"c_down_bytes"`
+	C_c2s_packet_jitter int32  `avro:"c_c2s_packet_jitter"`
+	C_s2c_packet_jitter int32  `avro:"c_s2c_packet_jitter"`
+	C_log_time          int64  `avro:"c_log_time"`
+	C_app_type          string `avro:"c_app_type"`
+	C_stream_time       int64  `avro:"c_stream_time"`
+	C_hostr             string `avro:"c_hostr"`
+	C_s_boundary        int64  `avro:"c_s_boundary"`
+	C_s_region          int64  `avro:"c_s_region"`
+	C_s_city            int64  `avro:"c_s_city"`
+	C_s_district        int64  `avro:"c_s_district"`
+	C_s_operators       int64  `avro:"c_s_operators"`
+	C_s_owner           string `avro:"c_s_owner"`
+	C_d_boundary        int64  `avro:"c_d_boundary"`
+	C_d_region          int64  `avro:"c_d_region"`
+	C_d_city            int64  `avro:"c_d_city"`
+	C_d_district        int64  `avro:"c_d_district"`
+	C_d_operators       int64  `avro:"c_d_operators"`
+	C_d_owner           string `avro:"c_d_owner"`
+	C_s_mark1           int64  `avro:"c_s_mark1"`
+	C_s_mark2           int64  `avro:"c_s_mark2"`
+	C_s_mark3           int64  `avro:"c_s_mark3"`
+	C_s_mark4           int64  `avro:"c_s_mark4"`
+	C_s_mark5           int64  `avro:"c_s_mark5"`
+	C_d_mark1           int64  `avro:"c_d_mark1"`
+	C_d_mark2           int64  `avro:"c_d_mark2"`
+	C_d_mark3           int64  `avro:"c_d_mark3"`
+	C_d_mark4           int64  `avro:"c_d_mark4"`
+	C_d_mark5           int64  `avro:"c_d_mark5"`
 }
 
 func init() {
@@ -315,6 +317,22 @@ func RandInt32(max int32) int32 {
 	}
 	out := data % max
 	return out
+}
+
+func Int2Ipv4(i int64) string {
+	return net.IP{byte(i >> 24), byte(i >> 16), byte(i >> 8), byte(i)}.String()
+}
+
+func BigInt2Ipv6(in []byte) string {
+	var i = 0
+	var tmp []string
+	for i < 16 {
+		item := fmt.Sprintf("%x%x", in[i], in[i+1])
+		tmp = append(tmp, item)
+		i = i + 2
+	}
+	ip := strings.Join(tmp, ":")
+	return ip
 }
 
 func NewDataRow() *DataRow {
@@ -398,10 +416,19 @@ func Write2Csv(bucketSize int) *bytes.Buffer {
 		var line []string
 		for j := 0; j < val.NumField(); j++ {
 			kind := val.Field(j).Kind()
+			name := val.Type().Field(j).Name
+
 			switch kind {
-			case reflect.Int32, reflect.Int64:
+
+			case reflect.Int32:
 				v := fmt.Sprintf("%v", val.Field(j))
 				line = append(line, v)
+			case reflect.Int64:
+				// ipv4 addr
+				if strings.HasSuffix(name, "_ip") {
+					v := Int2Ipv4(val.Field(j).Interface().(int64))
+					line = append(line, v)
+				}
 			case reflect.String:
 				line = append(line, val.Field(j).Interface().(string))
 			case reflect.Interface:
@@ -414,7 +441,8 @@ func Write2Csv(bucketSize int) *bytes.Buffer {
 				}
 			case reflect.Slice:
 				v := val.Field(j).Interface().([]byte)
-				line = append(line, string(v))
+				vv := BigInt2Ipv6(v)
+				line = append(line, vv)
 			default:
 				line = append(line, "")
 			}
