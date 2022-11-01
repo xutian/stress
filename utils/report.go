@@ -41,6 +41,7 @@ type Report struct {
 	SussfulRequests   int64
 	FailedRequests    int64
 	TotalRequestsSent int64
+	DataFmt	          string
 	ChanStatis        *chan *Statistician
 }
 
@@ -56,12 +57,13 @@ func NewReport(name string, conf *Config, chanStatis *chan *Statistician) *Repor
 		FailedRows:        0,
 		MessageSize:       conf.MessageSize,
 		ThreadsNum:        conf.Threads,
-		ChanStatis:        chanStatis,
 		SizePerSecond:     0,
 		RowPerSecond:      0,
 		SussfulRequests:   0,
 		FailedRequests:    0,
 		TotalRequestsSent: 0,
+		DataFmt:	   conf.DataFmt,
+		ChanStatis:        chanStatis,
 	}
 }
 
@@ -93,26 +95,27 @@ func Calc(ptrMapReport *map[string]*Report, ptrChanStatis *chan *Statistician) {
 }
 
 func (r *Report) Print() {
-	var tableContent [16]string
+	var tableContent [17]string
 	spentSeconds := float64(r.TotalSentTime) / float64(1000)
 	totalSentMiB := float64(r.TotalSentBytes) / float64(2<<19)
 
 	tableContent[0] = fmt.Sprintf("==============Summary for Topic %s======================", r.Name)
 	tableContent[1] = fmt.Sprintf("Start At: %v", r.StartTime)
 	tableContent[2] = fmt.Sprintf("Threads: %d", r.ThreadsNum)
-	tableContent[3] = fmt.Sprintf("SpentTime: %.3fs (%v Milliseconds)", spentSeconds, r.TotalSentTime)
-	tableContent[4] = fmt.Sprintf("Transmit Rows: %d (Total transmit rows)", r.TotalSentRows)
-	tableContent[5] = fmt.Sprintf("Transmit MiB: %.3f MiB (%v bytes)", totalSentMiB, r.TotalSentBytes)
-	tableContent[6] = fmt.Sprintf("Transmit Failed Rows: %d", r.FailedRows)
-	tableContent[7] = fmt.Sprintf("Transmit Successful Rows: %d", r.SuccessfulRows)
-	tableContent[8] = fmt.Sprintf("Rows Per Message: %d R/P", r.MessageSize)
-	tableContent[9] = fmt.Sprintf("Transmission Rate1: %.3f M/s (MiB per seconds)", r.SizePerSecond)
-	tableContent[10] = fmt.Sprintf("Transmission Rate2: %.3f R/s (Rows per seconds)", r.RowPerSecond)
-	tableContent[11] = fmt.Sprintf("Total Requests Sent: %d", r.TotalRequestsSent)
-	tableContent[12] = fmt.Sprintf("Failed Requests: %d", r.FailedRequests)
-	tableContent[13] = fmt.Sprintf("Successful Requests: %d", r.SussfulRequests)
-	tableContent[14] = fmt.Sprintf("ElapsedTime: %.3f s", r.EndTime.Sub(r.StartTime).Seconds())
-	tableContent[15] = fmt.Sprintf("StopTime: %v", r.EndTime)
+	tableContent[3] = fmt.Sprintf("Data Format: %s", r.DataFmt)
+	tableContent[4] = fmt.Sprintf("SpentTime: %.3fs (%v Milliseconds)", spentSeconds, r.TotalSentTime)
+	tableContent[5] = fmt.Sprintf("Transmit Rows: %d (Total transmit rows)", r.TotalSentRows)
+	tableContent[6] = fmt.Sprintf("Transmit MiB: %.3f MiB (%v bytes)", totalSentMiB, r.TotalSentBytes)
+	tableContent[7] = fmt.Sprintf("Transmit Failed Rows: %d", r.FailedRows)
+	tableContent[8] = fmt.Sprintf("Transmit Successful Rows: %d", r.SuccessfulRows)
+	tableContent[9] = fmt.Sprintf("Rows Per Message: %d R/P", r.MessageSize)
+	tableContent[10] = fmt.Sprintf("Transmission Rate1: %.3f M/s (MiB per seconds)", r.SizePerSecond)
+	tableContent[11] = fmt.Sprintf("Transmission Rate2: %.3f R/s (Rows per seconds)", r.RowPerSecond)
+	tableContent[12] = fmt.Sprintf("Total Requests Sent: %d", r.TotalRequestsSent)
+	tableContent[13] = fmt.Sprintf("Failed Requests: %d", r.FailedRequests)
+	tableContent[14] = fmt.Sprintf("Successful Requests: %d", r.SussfulRequests)
+	tableContent[15] = fmt.Sprintf("ElapsedTime: %.3f s", r.EndTime.Sub(r.StartTime).Seconds())
+	tableContent[16] = fmt.Sprintf("StopTime: %v", r.EndTime)
 	for i := 0; i < len(tableContent); i++ {
 		log.Infoln(tableContent[i])
 	}

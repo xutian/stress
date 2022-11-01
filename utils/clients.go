@@ -42,7 +42,7 @@ func (h *HttpHandler) Do(conf *Config, data *bytes.Buffer, chanOut *chan *Statis
 	}
 	statis := NewStatistician(h.Topic)
 	defer request.Body.Close()
-	if conf.Datafmt == "avro" {
+	if conf.DataFmt == "avro" {
 		request.Header.Add("Context-Type", "avro")
 		request.Header.Add("Content-Type", "application/avro")
 	} else {

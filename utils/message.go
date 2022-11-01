@@ -21,7 +21,7 @@ var DataSchema = `{
 	"fields":[
 		{
 			"name":"c_netnum",
-			"type":["int", "null"]
+			"type":"int"
 		},
 		{
 			"name":"c_ip",
@@ -49,7 +49,7 @@ var DataSchema = `{
 		},
 		{
 			"name":"c_s_tunnel_port",
-			"type":["int", "null"]
+			"type":"int"
 		},
 		{
 			"name":"c_dest_ipv4",
@@ -223,14 +223,14 @@ var DataSchema = `{
 }`
 
 type DataRow struct {
-	C_netnum            interface{} `avro:"c_netnum"`
+	C_netnum            int32       `avro:"c_netnum"`
 	C_ip                int64       `avro:"c_ip"`
 	C_flowid            string      `avro:"c_flowid"`
 	C_src_ipv4          int64       `avro:"c_src_ipv4"`
 	C_src_ipv6          []byte      `avro:"c_src_ipv6"`
 	C_src_port          int32       `avro:"c_src_port"`
 	C_s_tunnel_ip       int64       `avro:"c_s_tunnel_ip"`
-	C_s_tunnel_port     interface{} `avro:"c_s_tunnel_port"`
+	C_s_tunnel_port     int32       `avro:"c_s_tunnel_port"`
 	C_dest_ipv4         int64       `avro:"c_dest_ipv4"`
 	C_dest_ipv6         []byte      `avro:"c_dest_ipv6"`
 	C_dest_port         int32       `avro:"c_dest_port"`
@@ -430,7 +430,7 @@ func PushMessage(conf *Config, ptrMap *map[string]*chan *bytes.Buffer) {
 	pipMap := *ptrMap
 	var msg []byte
 	bufSize := conf.MessageSize
-	if conf.Datafmt == "avro" {
+	if conf.DataFmt == "avro" {
 		buffer := Write2Avro(bufSize)
 		msg = buffer.Bytes()
 		buffer.Reset()
