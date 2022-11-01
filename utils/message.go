@@ -424,10 +424,12 @@ func Write2Csv(bucketSize int) *bytes.Buffer {
 				v := fmt.Sprintf("%v", val.Field(j))
 				line = append(line, v)
 			case reflect.Int64:
+				v := Int2Ipv4(val.Field(j).Interface().(int64))
 				// ipv4 addr
-				if strings.HasSuffix(name, "_ip") {
-					v := Int2Ipv4(val.Field(j).Interface().(int64))
+				if strings.HasSuffix(name, "_ip") || strings.HasSuffix(name, "_ipv4") {
 					line = append(line, v)
+				} else {
+					line = append(line, fmt.Sprintf("%v", v))
 				}
 			case reflect.String:
 				line = append(line, val.Field(j).Interface().(string))
@@ -440,11 +442,12 @@ func Write2Csv(bucketSize int) *bytes.Buffer {
 					line = append(line, vv)
 				}
 			case reflect.Slice:
+				// ipv6 address
 				v := val.Field(j).Interface().([]byte)
 				vv := BigInt2Ipv6(v)
 				line = append(line, vv)
 			default:
-				line = append(line, "")
+				line = append(line, "0")
 			}
 
 		}
