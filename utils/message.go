@@ -318,23 +318,15 @@ func RandInt32(max int32) int32 {
 }
 
 func NewDataRow() *DataRow {
-	var c_netnum interface{}
-	var s_tunnel_port interface{}
-	i := RandInt32(1024)
-	if i%2 == 0 {
-		c_netnum = i
-	} else {
-		s_tunnel_port = i
-	}
 	buf := &DataRow{
-		C_netnum:            c_netnum,
+		C_netnum:            RandInt32(512),
 		C_ip:                RandIPv4(),
 		C_flowid:            RandStr(10),
 		C_src_ipv4:          RandIPv4(),
 		C_src_ipv6:          RandIPv6(),
 		C_src_port:          RandInt32(65536),
 		C_s_tunnel_ip:       RandIPv4(),
-		C_s_tunnel_port:     s_tunnel_port,
+		C_s_tunnel_port:     RandInt32(1024),
 		C_dest_ipv4:         RandIPv4(),
 		C_dest_ipv6:         RandIPv6(),
 		C_dest_port:         RandInt32(65536),
