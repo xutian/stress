@@ -2,14 +2,13 @@ package utils
 
 import (
 	"bytes"
-	"encoding/binary"
 	"encoding/csv"
 	"encoding/hex"
 	"fmt"
 	"math/rand"
+
 	"net"
 	"reflect"
-	"strconv"
 	"strings"
 	"time"
 
@@ -282,7 +281,6 @@ func init() {
 }
 
 func RandStr(n int) string {
-	//rand.Seed(time.Now().UnixNano())
 	buf := make([]byte, n)
 	rand.Read(buf)
 	out := hex.EncodeToString(buf)
@@ -294,11 +292,24 @@ func RandIPv4() int64 {
 	return int64(out)
 }
 
+func RandIPv6String() string {
+	size := 16
+	ip := make([]byte, size)
+	for i := 0; i < size; i++ {
+		ip[i] = byte(rand.Intn(256))
+	}
+	return net.IP(ip).To16().String()
+}
+
+func IPv6ToInt(in string) []byte {
+	out := net.ParseIP(in)
+	//ip := binary.BigEndian.Uint64(out)
+	return out
+}
+
 func RandIPv6() []byte {
-	ip := make([]byte, 16)
-	out := rand.New(rand.NewSource(time.Now().UnixNano())).Uint64()
-	binary.BigEndian.PutUint64(ip, out)
-	return ip
+	ipStr := RandIPv6String()
+	return IPv6ToInt(ipStr)
 }
 
 func RandInt64(max int64) int64 {
@@ -323,16 +334,9 @@ func Int2Ipv4(i int64) string {
 	return net.IP{byte(i >> 24), byte(i >> 16), byte(i >> 8), byte(i)}.String()
 }
 
-func BigInt2Ipv6(in []byte) string {
-	var i = 0
-	var tmp []string
-	for i < 16 {
-		item := fmt.Sprintf("%x%x", in[i], in[i+1])
-		tmp = append(tmp, item)
-		i = i + 2
-	}
-	ip := strings.Join(tmp, ":")
-	return ip
+func Bytes2Ipv6(in []byte) string {
+	ip := net.IP(in)
+	return ip.String()
 }
 
 func NewDataRow() *DataRow {
@@ -417,37 +421,38 @@ func Write2Csv(bucketSize int) *bytes.Buffer {
 		for j := 0; j < val.NumField(); j++ {
 			kind := val.Field(j).Kind()
 			name := val.Type().Field(j).Name
-
+			valIterface := val.Field(j).Interface()
 			switch kind {
 
 			case reflect.Int32:
-				v := fmt.Sprintf("%v", val.Field(j))
+				v := fmt.Sprintf("%v", valIterface.(int32))
 				line = append(line, v)
+				log.Tracef("%s match int32 item %d, val: %s", name, j, v)
 			case reflect.Int64:
-				v := Int2Ipv4(val.Field(j).Interface().(int64))
 				// ipv4 addr
 				if strings.HasSuffix(name, "_ip") || strings.HasSuffix(name, "_ipv4") {
+					v := Int2Ipv4(valIterface.(int64))
 					line = append(line, v)
+					log.Tracef("%s match int64-ipv4 item %d, val: %s", name, j, v)
 				} else {
-					line = append(line, fmt.Sprintf("%v", v))
+					v := fmt.Sprintf("%v", valIterface.(int64))
+					line = append(line, v)
+					log.Tracef("%s match int64 item %d, val: %s", name, j, v)
 				}
 			case reflect.String:
-				line = append(line, val.Field(j).Interface().(string))
-			case reflect.Interface:
-				v := RandInt32(1024) % 256
-				if v == 0 {
-					line = append(line, "")
-				} else {
-					vv := strconv.Itoa(int(v))
-					line = append(line, vv)
-				}
+				v := valIterface.(string)
+				line = append(line, v)
+				log.Tracef("%s match string item %d, val: %s", name, j, v)
 			case reflect.Slice:
 				// ipv6 address
-				v := val.Field(j).Interface().([]byte)
-				vv := BigInt2Ipv6(v)
-				line = append(line, vv)
+				tmp := val.Field(j).Interface().([]byte)
+				v := Bytes2Ipv6(tmp)
+				line = append(line, v)
+				log.Tracef("%s match slice item %d, val: %s", name, j, v)
 			default:
-				line = append(line, "0")
+				v := "0"
+				line = append(line, v)
+				log.Tracef("%s match default item %d, val: %s", name, j, v)
 			}
 
 		}
