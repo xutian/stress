@@ -411,7 +411,7 @@ func Write2Avro(bucketSize int) *bytes.Buffer {
 			tag := typ.Field(j).Tag.Get("avro")
 			val := value.Field(j).Interface()
 			record.Set(tag, val)
-			log.Debugf("Set avro field %s: %v", tag, val)
+			log.Tracef("Set avro field %s: %v", tag, val)
 		}
 		writer.Write(record, encoder)
 	}
