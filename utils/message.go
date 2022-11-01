@@ -492,7 +492,7 @@ func PushMessage(conf *Config, ptrMap *map[string]*chan *bytes.Buffer) {
 		//newBuffer.Write(msg)
 		pipe := *ptrPipe
 		pipe <- newBuffer
-		log.Debugf("Generate data %v (bytes) data for topic %s", msgSize, topic)
+		log.Debugf("Made %v (bytes) data for topic %s", msgSize, topic)
 	}
 
 }
