@@ -92,7 +92,7 @@ func DataConsumer(conf *Config, topic string, out *chan *Statistician, pipe *cha
 
 	var wg sync.WaitGroup
 	// New pool for send data
-	pool, o_err := ants.NewPoolWithFunc(
+	pool, err := ants.NewPoolWithFunc(
 		poolSize,
 		func(i interface{}) {
 			if conf.MethodId == 1 {
@@ -104,8 +104,8 @@ func DataConsumer(conf *Config, topic string, out *chan *Statistician, pipe *cha
 			}
 			wg.Done()
 		})
-	if o_err != nil {
-		panic(o_err)
+	if err != nil {
+		log.Fatalf("Create task pool for consume data failed with error %v", err)
 	}
 	defer pool.Release()
 
